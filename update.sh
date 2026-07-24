@@ -11,7 +11,7 @@ echo ""
 # Pull latest from GitHub
 echo "[1/4] Pulling latest changes..."
 cd "$APP_DIR"
-git pull origin main
+git pull origin master
 
 # Install dependencies
 echo "[2/4] Installing dependencies..."
