@@ -1,17 +1,11 @@
 from codrone_edu.drone import *
 import time
-import threading
 
-drone1 = Drone()
-drone2 = Drone()
-drone3 = Drone()
-
-drone1.pair()
-drone2.pair()
-drone3.pair()
-
+drone = Drone()
+drone.pair()
 time.sleep(2)
 
+# === VARIABLES ===
 speed = 50
 distance = 100
 turn_angle = 90
@@ -31,6 +25,7 @@ color = "none"
 battery = 100
 user_choice = 0
 
+# === SET VARIABLES (all operators) ===
 speed = speed + 10
 distance = distance * 2
 turn_angle = turn_angle / 2
@@ -39,6 +34,7 @@ x = x + 1
 y = y - 1
 z = z * 2
 
+# === PRINT VARIABLES ===
 print(speed)
 print(distance)
 print(turn_angle)
@@ -47,16 +43,18 @@ print(x)
 print(y)
 print(z)
 
+# === LISTS ===
 flight_log = [10, 20, 30, 40, 50]
 colors_list = ["red", "green", "blue", "yellow", "cyan"]
 distances_read = []
-headings_flown = []
 
+# === LIST APPEND ===
 flight_log.append(60)
 flight_log.append(70)
 colors_list.append("magenta")
 colors_list.append("white")
 
+# === LIST GET INDEX ===
 val = flight_log[0]
 print(val)
 val = flight_log[3]
@@ -66,440 +64,11 @@ print(val)
 val = colors_list[4]
 print(val)
 
+# === TIMER ===
 t = time.time()
 mission_start = time.time()
 
-def fly_drone1():
-    d = drone1
-    d.takeoff()
-    time.sleep(2)
-
-    d.set_led("green")
-    d.set_buzzer(440, 0.3)
-    time.sleep(1)
-
-    d.move_forward(50, 60)
-    time.sleep(0.5)
-
-    d.move_backward(50, 60)
-    time.sleep(0.5)
-
-    d.move_left(30, 50)
-    time.sleep(0.5)
-
-    d.move_right(30, 50)
-    time.sleep(0.5)
-
-    d.turn_left(90)
-    time.sleep(0.5)
-
-    d.turn_right(90)
-    time.sleep(0.5)
-
-    d.go("forward", 40, 1.0)
-    time.sleep(0.3)
-    d.go("backward", 40, 1.0)
-    time.sleep(0.3)
-    d.go("left", 40, 1.0)
-    time.sleep(0.3)
-    d.go("right", 40, 1.0)
-    time.sleep(0.3)
-
-    d.set_led("red")
-    time.sleep(0.5)
-    d.set_led("green")
-    time.sleep(0.5)
-    d.set_led("blue")
-    time.sleep(0.5)
-    d.set_led("yellow")
-    time.sleep(0.5)
-    d.set_led("cyan")
-    time.sleep(0.5)
-    d.set_led("magenta")
-    time.sleep(0.5)
-    d.set_led("white")
-    time.sleep(0.5)
-
-    d.random_color()
-    time.sleep(0.5)
-    d.random_color()
-    time.sleep(0.5)
-
-    d.set_buzzer(262, 0.3)
-    time.sleep(0.4)
-    d.set_buzzer(330, 0.3)
-    time.sleep(0.4)
-    d.set_buzzer(392, 0.3)
-    time.sleep(0.4)
-    d.set_buzzer(523, 0.5)
-    time.sleep(0.6)
-
-    dist = d.get_distance()
-    print(dist)
-    distances_read.append(dist)
-
-    height = d.get_height()
-    print(height)
-
-    color = d.get_color()
-    print(color)
-
-    battery = d.get_battery()
-    print(battery)
-
-    temp = d.get_temperature()
-    print(temp)
-
-    for i in range(5):
-        d.move_forward(20, 30)
-        time.sleep(0.3)
-
-    for i in range(0, 10, 2):
-        d.turn_left(15)
-        time.sleep(0.2)
-
-    for i in range(10, 0, -1):
-        d.move_forward(i * 5, 40)
-        time.sleep(0.2)
-
-    loop_count = 0
-    while loop_count < 10:
-        d.hover(0.5)
-        loop_count = loop_count + 1
-
-    dist = d.get_distance()
-    while dist > safe_distance:
-        d.move_forward(20, 40)
-        time.sleep(0.3)
-        dist = d.get_distance()
-        print(dist)
-
-    battery = d.get_battery()
-    if battery > 50:
-        d.set_led("green")
-        d.move_forward(100, 60)
-        time.sleep(1)
-    elif battery > 30:
-        d.set_led("yellow")
-        d.move_forward(50, 40)
-        time.sleep(0.5)
-    else:
-        d.set_led("red")
-        d.land()
-        time.sleep(2)
-
-    color = d.get_color()
-    if color == "red":
-        d.set_led("red")
-        d.set_buzzer(800, 0.3)
-        d.hover(1)
-    elif color == "green":
-        d.set_led("green")
-        d.set_buzzer(400, 0.3)
-        d.move_forward(50, 50)
-    elif color == "blue":
-        d.set_led("blue")
-        d.set_buzzer(600, 0.3)
-        d.turn_left(90)
-    else:
-        d.set_led("white")
-        d.hover(0.5)
-
-    d.set_led("green")
-    d.set_buzzer(440, 0.2)
-
-    d.move_forward(50, 60)
-    time.sleep(0.5)
-    d.turn_right(90)
-    time.sleep(0.3)
-    d.move_forward(50, 60)
-    time.sleep(0.5)
-    d.turn_right(90)
-    time.sleep(0.3)
-    d.move_forward(50, 60)
-    time.sleep(0.5)
-    d.turn_right(90)
-    time.sleep(0.3)
-
-    d.set_led("blue")
-    time.sleep(0.3)
-    d.set_led("cyan")
-    time.sleep(0.3)
-    d.set_led("white")
-    time.sleep(0.3)
-
-    d.set_buzzer(523, 0.3)
-    time.sleep(0.5)
-
-    d.flip("back")
-    time.sleep(1)
-
-    d.set_led("green")
-    d.set_buzzer(880, 0.3)
-
-    elapsed = time.time() - mission_start
-    print(elapsed)
-
-    d.set_led("red")
-    d.set_buzzer(200, 0.5)
-    time.sleep(1)
-
-    d.set_led("off")
-    d.land()
-
-def fly_drone2():
-    d = drone2
-    d.takeoff()
-    time.sleep(2)
-
-    d.set_led("blue")
-    d.set_buzzer(523, 0.3)
-    time.sleep(1)
-
-    d.circle()
-    time.sleep(3)
-
-    d.square()
-    time.sleep(3)
-
-    d.triangle()
-    time.sleep(3)
-
-    d.set_led("magenta")
-    time.sleep(0.3)
-    d.set_led("purple")
-    time.sleep(0.3)
-    d.set_led("pink")
-    time.sleep(0.3)
-
-    d.set_buzzer(330, 0.2)
-    d.turn_left(45)
-    time.sleep(0.3)
-    d.set_buzzer(440, 0.2)
-    d.move_forward(40, 50)
-    time.sleep(0.3)
-    d.set_buzzer(550, 0.2)
-    d.turn_right(90)
-    time.sleep(0.3)
-    d.set_buzzer(660, 0.3)
-    d.move_backward(40, 50)
-    time.sleep(0.3)
-    d.set_buzzer(880, 0.3)
-    d.hover(0.5)
-
-    for i in range(3):
-        d.move_forward(30, 50)
-        time.sleep(0.3)
-        d.turn_right(120)
-        time.sleep(0.3)
-
-    d.set_led("orange")
-    time.sleep(0.5)
-    d.set_led("yellow")
-    time.sleep(0.5)
-    d.set_led("green")
-    time.sleep(0.5)
-
-    battery = d.get_battery()
-    while battery > battery_threshold:
-        d.move_forward(15, 30)
-        time.sleep(0.3)
-        d.turn_left(30)
-        time.sleep(0.2)
-        battery = d.get_battery()
-        elapsed = time.time() - mission_start
-        print(elapsed)
-
-    d.set_led("cyan")
-    d.set_buzzer(1000, 0.2)
-    time.sleep(0.5)
-
-    d.flip("forward")
-    time.sleep(1)
-    d.flip("left")
-    time.sleep(1)
-    d.flip("right")
-    time.sleep(1)
-
-    for i in range(5):
-        d.move_forward(20, 40)
-        time.sleep(0.2)
-        d.turn_right(72)
-        time.sleep(0.2)
-
-    d.set_led("white")
-    time.sleep(0.3)
-
-    height = d.get_height()
-    while height < 1.5:
-        d.move_forward(10, 30)
-        time.sleep(0.2)
-        height = d.get_height()
-        print(height)
-
-    while height > 1.0:
-        d.move_backward(10, 30)
-        time.sleep(0.2)
-        height = d.get_height()
-        print(height)
-
-    d.set_led("red")
-    d.set_buzzer(200, 0.5)
-    time.sleep(1)
-
-    d.set_led("off")
-    d.land()
-
-def fly_drone3():
-    d = drone3
-    d.takeoff()
-    time.sleep(2)
-
-    d.set_led("orange")
-    d.set_buzzer(660, 0.3)
-    time.sleep(1)
-
-    for i in range(4):
-        d.move_forward(40, 50)
-        time.sleep(0.3)
-        d.turn_right(90)
-        time.sleep(0.3)
-
-    d.set_led("pink")
-    time.sleep(0.5)
-
-    d.move_left(60, 50)
-    time.sleep(0.5)
-    d.move_right(60, 50)
-    time.sleep(0.5)
-
-    d.go("left", 40, 1.0)
-    time.sleep(0.3)
-    d.go("right", 40, 1.0)
-    time.sleep(0.3)
-
-    dist = d.get_distance()
-    print(dist)
-
-    if dist < 20:
-        d.set_led("red")
-        d.move_backward(30, 50)
-    elif dist < 50:
-        d.set_led("yellow")
-        d.hover(0.5)
-    else:
-        d.set_led("green")
-        d.move_forward(50, 50)
-
-    height = d.get_height()
-    if height > 1.5:
-        d.set_led("cyan")
-        d.move_backward(20, 40)
-    elif height < 0.5:
-        d.set_led("orange")
-        d.move_forward(20, 40)
-    else:
-        d.set_led("green")
-
-    temp = d.get_temperature()
-    if temp > 30:
-        d.set_led("red")
-        d.set_buzzer(1000, 0.5)
-    elif temp > 20:
-        d.set_led("green")
-    else:
-        d.set_led("blue")
-
-    battery = d.get_battery()
-    dist = d.get_distance()
-    height = d.get_height()
-
-    if battery > 60:
-        if dist > 50:
-            d.set_led("green")
-            d.move_forward(80, 60)
-        elif dist > 20:
-            d.set_led("yellow")
-            d.move_forward(40, 40)
-        else:
-            d.set_led("red")
-            d.turn_left(90)
-    elif battery > 30:
-        if height > 1.0:
-            d.set_led("orange")
-            d.hover(1)
-        else:
-            d.set_led("yellow")
-            d.move_forward(30, 30)
-    else:
-        d.set_led("red")
-        d.set_buzzer(200, 1.0)
-        d.land()
-
-    d.set_led("purple")
-    time.sleep(0.3)
-
-    for i in range(8):
-        d.set_led("red")
-        time.sleep(0.15)
-        d.set_led("orange")
-        time.sleep(0.15)
-        d.set_led("yellow")
-        time.sleep(0.15)
-        d.set_led("green")
-        time.sleep(0.15)
-        d.set_led("cyan")
-        time.sleep(0.15)
-        d.set_led("blue")
-        time.sleep(0.15)
-        d.set_led("purple")
-        time.sleep(0.15)
-        d.set_led("magenta")
-        time.sleep(0.15)
-
-    d.set_buzzer(262, 0.2)
-    d.move_forward(20, 40)
-    time.sleep(0.3)
-    d.set_buzzer(330, 0.2)
-    d.turn_right(45)
-    time.sleep(0.3)
-    d.set_buzzer(392, 0.2)
-    d.move_forward(20, 40)
-    time.sleep(0.3)
-    d.set_buzzer(523, 0.3)
-    d.turn_left(90)
-    time.sleep(0.4)
-    d.set_buzzer(659, 0.2)
-    d.move_backward(20, 40)
-    time.sleep(0.3)
-    d.set_buzzer(784, 0.3)
-    d.hover(0.5)
-
-    battery = d.get_battery()
-    flight_log2 = []
-
-    for row in range(3):
-        for col in range(3):
-            d.move_forward(30, 40)
-            time.sleep(0.3)
-            dist = d.get_distance()
-            flight_log2.append(dist)
-            height = d.get_height()
-            flight_log2.append(height)
-        d.turn_right(90)
-        time.sleep(0.3)
-        d.move_forward(30, 40)
-        time.sleep(0.3)
-        d.turn_left(90)
-        time.sleep(0.3)
-
-    d.set_led("red")
-    d.set_buzzer(200, 0.5)
-    time.sleep(1)
-
-    d.set_led("off")
-    d.land()
-
+# === FUNCTIONS ===
 def scan_area(d):
     d.turn_left(90)
     time.sleep(0.5)
@@ -573,13 +142,14 @@ def calculate_speed(power):
     s = power * 2
     return s
 
-alt = get_altitude(drone1)
+# === USER INPUT ===
+alt = get_altitude(drone)
 print(alt)
 
-pwr = check_battery(drone1)
+pwr = check_battery(drone)
 print(pwr)
 
-safe = is_safe(drone1)
+safe = is_safe(drone)
 print(safe)
 
 spd = calculate_speed(50)
@@ -588,28 +158,262 @@ print(spd)
 user_choice = input("Enter 1-5 for flight pattern: ")
 print(user_choice)
 
-scan_area(drone1)
+# === FUNCTION CALLS ===
+scan_area(drone)
 time.sleep(0.5)
 
-scan_area(drone2)
+# === TAKEOFF ===
+drone.takeoff()
+time.sleep(2)
+
+# === LED - all 10 colors + off ===
+drone.set_led("green")
+drone.set_buzzer(440, 0.3)
+time.sleep(1)
+
+drone.move_forward(50, 60)
+time.sleep(0.5)
+drone.move_backward(50, 60)
+time.sleep(0.5)
+drone.move_left(30, 50)
+time.sleep(0.5)
+drone.move_right(30, 50)
+time.sleep(0.5)
+drone.move_up(40, 50)
+time.sleep(0.5)
+drone.move_down(40, 50)
 time.sleep(0.5)
 
-scan_area(drone3)
+# === TURN - different angles ===
+drone.turn_left(90)
+time.sleep(0.5)
+drone.turn_right(90)
+time.sleep(0.5)
+drone.turn_left(45)
+time.sleep(0.3)
+drone.turn_right(180)
+time.sleep(0.5)
+drone.turn_left(270)
 time.sleep(0.5)
 
-threads = []
-t1 = threading.Thread(target=fly_drone1)
-t2 = threading.Thread(target=fly_drone2)
-t3 = threading.Thread(target=fly_drone3)
-threads.append(t1)
-threads.append(t2)
-threads.append(t3)
+# === GO - all 6 directions ===
+drone.go("forward", 40, 1.0)
+time.sleep(0.3)
+drone.go("backward", 40, 1.0)
+time.sleep(0.3)
+drone.go("left", 40, 1.0)
+time.sleep(0.3)
+drone.go("right", 40, 1.0)
+time.sleep(0.3)
+drone.move_up(40, 40)
+time.sleep(0.3)
+drone.move_down(40, 40)
+time.sleep(0.3)
 
-for t in threads:
-    t.start()
-for t in threads:
-    t.join()
+# === LED - all 10 colors + off ===
+drone.set_led("red")
+time.sleep(0.3)
+drone.set_led("green")
+time.sleep(0.3)
+drone.set_led("blue")
+time.sleep(0.3)
+drone.set_led("yellow")
+time.sleep(0.3)
+drone.set_led("cyan")
+time.sleep(0.3)
+drone.set_led("magenta")
+time.sleep(0.3)
+drone.set_led("white")
+time.sleep(0.3)
+drone.set_led("purple")
+time.sleep(0.3)
+drone.set_led("orange")
+time.sleep(0.3)
+drone.set_led("pink")
+time.sleep(0.3)
+drone.set_led("off")
+time.sleep(0.2)
 
-drone1.close()
-drone2.close()
-drone3.close()
+# === RANDOM LED ===
+drone.random_color()
+time.sleep(0.5)
+drone.random_color()
+time.sleep(0.5)
+drone.random_color()
+time.sleep(0.5)
+
+# === BUZZER - different frequencies ===
+drone.set_buzzer(262, 0.3)
+time.sleep(0.4)
+drone.set_buzzer(330, 0.3)
+time.sleep(0.4)
+drone.set_buzzer(392, 0.3)
+time.sleep(0.4)
+drone.set_buzzer(523, 0.5)
+time.sleep(0.6)
+drone.set_buzzer(660, 0.2)
+time.sleep(0.3)
+drone.set_buzzer(880, 0.1)
+time.sleep(0.2)
+
+# === SENSORS - all 5 ===
+dist = drone.get_distance()
+print(dist)
+distances_read.append(dist)
+
+height = drone.get_height()
+print(height)
+
+color = drone.get_color()
+print(color)
+
+battery = drone.get_battery()
+print(battery)
+
+temp = drone.get_temperature()
+print(temp)
+
+# === FOR LOOP - forward 5 times ===
+for i in range(5):
+    drone.move_forward(20, 30)
+    time.sleep(0.3)
+
+# === FOR LOOP - turn with step ===
+for i in range(0, 10, 2):
+    drone.turn_left(15)
+    time.sleep(0.2)
+
+# === FOR LOOP - decreasing distance ===
+for i in range(10, 0, -1):
+    drone.move_forward(i * 5, 40)
+    time.sleep(0.2)
+
+# === WHILE LOOP ===
+loop_count = 0
+while loop_count < 10:
+    drone.hover(0.5)
+    loop_count = loop_count + 1
+
+# === WHILE with sensor reading ===
+dist = drone.get_distance()
+while dist > safe_distance:
+    drone.move_forward(20, 40)
+    time.sleep(0.3)
+    dist = drone.get_distance()
+    print(dist)
+
+# === IF/ELIF/ELSE with battery ===
+battery = drone.get_battery()
+if battery > 50:
+    drone.set_led("green")
+    drone.move_forward(100, 60)
+    time.sleep(1)
+elif battery > 30:
+    drone.set_led("yellow")
+    drone.move_forward(50, 40)
+    time.sleep(0.5)
+else:
+    drone.set_led("red")
+    drone.land()
+    time.sleep(2)
+
+# === IF/ELIF/ELSE with color sensor ===
+color = drone.get_color()
+if color == "red":
+    drone.set_led("red")
+    drone.set_buzzer(800, 0.3)
+    drone.hover(1)
+elif color == "green":
+    drone.set_led("green")
+    drone.set_buzzer(400, 0.3)
+    drone.move_forward(50, 50)
+elif color == "blue":
+    drone.set_led("blue")
+    drone.set_buzzer(600, 0.3)
+    drone.turn_left(90)
+else:
+    drone.set_led("white")
+    drone.hover(0.5)
+
+# === FLIP - all 4 directions ===
+drone.set_led("cyan")
+drone.flip("back")
+time.sleep(1.5)
+drone.set_led("magenta")
+drone.flip("forward")
+time.sleep(1.5)
+drone.set_led("yellow")
+drone.flip("left")
+time.sleep(1.5)
+drone.set_led("orange")
+drone.flip("right")
+time.sleep(1.5)
+
+# === SQUARE pattern ===
+drone.set_led("green")
+drone.set_buzzer(440, 0.2)
+pattern_square(drone)
+
+# === TRIANGLE pattern ===
+drone.set_led("blue")
+drone.set_buzzer(550, 0.2)
+pattern_triangle(drone)
+
+# === CIRCLE pattern ===
+drone.set_led("purple")
+drone.set_buzzer(660, 0.2)
+drone.circle()
+time.sleep(3)
+
+# === SQUARE with size ===
+drone.set_led("cyan")
+drone.square()
+time.sleep(3)
+
+# === TRIANGLE with size ===
+drone.set_led("pink")
+drone.triangle()
+time.sleep(3)
+
+# === TIMER - get elapsed ===
+elapsed = time.time() - mission_start
+print(elapsed)
+
+# === SLEEP (time.sleep) ===
+drone.set_led("red")
+drone.set_buzzer(200, 0.5)
+time.sleep(1)
+
+# === TURN around with different angles ===
+drone.set_led("green")
+for i in range(4):
+    drone.move_forward(50, 60)
+    time.sleep(0.5)
+    drone.turn_right(90)
+    time.sleep(0.3)
+
+# === LED chase sequence ===
+drone.set_led("blue")
+time.sleep(0.2)
+drone.set_led("cyan")
+time.sleep(0.2)
+drone.set_led("white")
+time.sleep(0.2)
+
+# === BUZZER melody ===
+drone.set_buzzer(523, 0.3)
+time.sleep(0.3)
+drone.set_buzzer(659, 0.3)
+time.sleep(0.3)
+drone.set_buzzer(784, 0.3)
+time.sleep(0.3)
+drone.set_buzzer(1047, 0.5)
+time.sleep(0.5)
+
+# === FINAL ===
+drone.set_led("green")
+drone.set_buzzer(880, 0.3)
+drone.set_led("off")
+drone.land()
+
+drone.close()

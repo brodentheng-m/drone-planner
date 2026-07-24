@@ -50,7 +50,6 @@ export function parseDroneScript(text) {
 function parseLine(line) {
   let m;
 
-  // Block control flow
   if ((m = line.match(/^if\s+(.+):$/))) return { type: 'if_block', params: { condition: m[1] }, children: [] };
   if ((m = line.match(/^elif\s+(.+):$/))) return { type: 'elif_block', params: { condition: m[1] }, children: [] };
   if (line === 'else:') return { type: 'else_block', params: {}, children: [] };
@@ -66,27 +65,22 @@ function parseLine(line) {
   }
   if (line === 'break') return { type: 'break_cmd', params: {} };
 
-  // Functions
   if ((m = line.match(/^def\s+(\w+)\(\):$/))) return { type: 'func_def', params: { name: m[1] }, children: [] };
   if ((m = line.match(/^(\w+)\(\)$/))) return { type: 'func_call', params: { name: m[1] } };
   if ((m = line.match(/^return\s+(.+)$/))) return { type: 'return_val', params: { value: m[1] } };
 
-  // Variables
   if ((m = line.match(/^(\w+)\s*=\s*(.+)$/))) return { type: 'var_declare', params: { name: m[1], value: m[2] } };
   if ((m = line.match(/^(\w+)\s*(\+=|-=|\*=|\/=)\s*(.+)$/))) return { type: 'set_var', params: { name: m[1], op: m[2], value: m[3] } };
   if ((m = line.match(/^print\((.+)\)$/))) return { type: 'print_var', params: { value: m[1] } };
 
-  // Lists
   if ((m = line.match(/^(\w+)\s*=\s*\[(.+)\]$/))) return { type: 'list_declare', params: { name: m[1], values: m[2] } };
   if ((m = line.match(/^(\w+)\.append\((.+)\)$/))) return { type: 'list_append', params: { name: m[1], value: m[2] } };
   if ((m = line.match(/^(\w+)\s*=\s*(\w+)\[(.+)\]$/))) return { type: 'list_get', params: { var: m[1], list_name: m[2], index: m[3] } };
 
-  // Timer
   if ((m = line.match(/^(\w+)\s*=\s*time\.time\(\)$/))) return { type: 'timer_start', params: { name: m[1] } };
   if ((m = line.match(/^(\w+)\s*=\s*time\.time\(\)\s*-\s*(\w+)$/))) return { type: 'timer_elapsed', params: { var: m[1], name: m[2] } };
   if ((m = line.match(/^time\.sleep\((.+)\)$/))) return { type: 'time_sleep', params: { dur: parseFloat(m[1]) || 1 } };
 
-  // Drone commands
   if ((m = line.match(/drone\.takeoff\(\)/))) return { type: 'takeoff', params: {} };
   if ((m = line.match(/drone\.land\(\)/))) return { type: 'land', params: {} };
   if ((m = line.match(/drone\.hover\((.+)\)/))) return { type: 'hover', params: { dur: parseFloat(m[1]) || 1 } };
@@ -112,12 +106,10 @@ function parseLine(line) {
   if ((m = line.match(/drone\.square\(\)/))) return { type: 'square', params: {} };
   if ((m = line.match(/drone\.triangle\(\)/))) return { type: 'triangle', params: {} };
 
-  // LED / Buzzer
   if ((m = line.match(/drone\.set_led\(["'](\w+)["']\)/))) return { type: 'led', params: { color: m[1] } };
   if ((m = line.match(/drone\.set_buzzer\((\d+)\s*,\s*([\d.]+)\)/))) return { type: 'buzzer', params: { freq: parseInt(m[1]), dur: parseFloat(m[2]) } };
   if ((m = line.match(/drone\.random_color\(\)/))) return { type: 'random_led', params: {} };
 
-  // Sensors
   if ((m = line.match(/(\w+)\s*=\s*drone\.get_distance\(\)/))) return { type: 'get_distance', params: { var: m[1] } };
   if ((m = line.match(/(\w+)\s*=\s*drone\.get_height\(\)/))) return { type: 'get_height', params: { var: m[1] } };
   if ((m = line.match(/(\w+)\s*=\s*drone\.get_color\(\)/))) return { type: 'get_color', params: { var: m[1] } };

@@ -27,7 +27,6 @@ html, body {
 
 #app { display: flex; flex-direction: column; height: 100vh; }
 
-/* Toolbar */
 #toolbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 5px 12px; background: var(--bg-medium); border-bottom: 1px solid var(--border);
@@ -47,7 +46,6 @@ html, body {
 
 .sep { width: 1px; height: 20px; background: var(--border); }
 
-/* Drone Bar */
 #drone-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 4px 12px; background: var(--bg-dark); border-bottom: 1px solid var(--border);
@@ -99,10 +97,8 @@ html, body {
   width: 1px; height: 16px; background: var(--border); margin: 0 2px;
 }
 
-/* Workspace */
 #workspace { display: flex; flex: 1; overflow: hidden; }
 
-/* Left Panel */
 #left-panel {
   width: 260px; background: var(--bg-medium); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
@@ -130,7 +126,6 @@ html, body {
 .mode-btn.active { background: var(--accent); color: #000; font-weight: 600; }
 .mode-icon { font-size: 16px; width: 20px; text-align: center; }
 
-/* Command Palette */
 .cmd-section { border-top: 1px solid var(--border); }
 .cmd-section-label {
   font-size: 9px; text-transform: uppercase; color: var(--text-dim);
@@ -162,7 +157,6 @@ html, body {
 .cat-timer { border-left: 2px solid var(--orange); }
 .cat-timer:hover { background: rgba(210,153,34,0.15); border-color: var(--orange); }
 
-/* Command Options - hidden, using inline edit instead */
 #cmd-options { display: none; }
 
 #dynamic-options { padding: 4px 10px; }
@@ -175,7 +169,6 @@ html, body {
   padding: 4px 6px; border-radius: 4px; font-size: 12px;
 }
 
-/* Command List */
 #command-list-panel { padding-bottom: 10px; }
 
 #command-list { padding: 0 6px 10px; }
@@ -205,7 +198,6 @@ html, body {
 .cmd-actions button:hover { background: var(--border); color: var(--text); }
 .cmd-delete:hover { color: var(--red) !important; }
 
-/* Block commands */
 .cmd-item.block-open {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
@@ -243,7 +235,6 @@ html, body {
 }
 .cmd-block-add button:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Inline edit */
 .cmd-inline-edit {
   display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px 6px 28px;
   background: var(--bg-dark); border: 1px solid var(--border);
@@ -273,7 +264,6 @@ html, body {
   margin-top: -3px;
 }
 
-/* Block command category colors on left border */
 .cmd-item.cat-flight { border-left: 3px solid var(--green); }
 .cmd-item.cat-control { border-left: 3px solid var(--accent); }
 .cmd-item.cat-output { border-left: 3px solid var(--orange); }
@@ -282,7 +272,6 @@ html, body {
 .cmd-item.cat-func { border-left: 3px solid var(--pink); }
 .cmd-item.cat-timer { border-left: 3px solid var(--orange); }
 
-/* Center Panel */
 #center-panel { flex: 1; position: relative; overflow: hidden; }
 
 #scene-container { width: 100%; height: 100%; }
@@ -313,7 +302,6 @@ html, body {
   font-family: monospace;
 }
 
-/* Right Panel */
 #right-panel {
   width: 260px; background: var(--bg-medium); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; flex-shrink: 0;
@@ -335,7 +323,6 @@ html, body {
 }
 #btn-copy-code:hover { background: var(--green); color: #000; }
 
-/* Console Panel */
 #console-panel {
   height: 120px;
   background: var(--bg-medium);
@@ -387,7 +374,6 @@ html, body {
 .console-line.success { color: var(--green); }
 .console-line .timestamp { color: var(--text-dim); margin-right: 8px; opacity: 0.5; }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

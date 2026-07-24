@@ -26,36 +26,30 @@ export function createDroneMesh() {
   const sensorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.7 });
   const sensorRingMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.4, metalness: 0.8 });
 
-  // === MAIN BODY ===
-  // Lower chassis
   const lowerGeo = new THREE.BoxGeometry(0.28, 0.035, 0.28);
   const lower = new THREE.Mesh(lowerGeo, bodyMat);
   lower.castShadow = true;
   lower.receiveShadow = true;
   group.add(lower);
 
-  // Upper shell (rounded look via beveled box)
   const upperGeo = new THREE.BoxGeometry(0.26, 0.04, 0.26);
   const upper = new THREE.Mesh(upperGeo, bodyMat);
   upper.position.y = 0.037;
   upper.castShadow = true;
   group.add(upper);
 
-  // Top plate (flight controller cover)
   const topGeo = new THREE.BoxGeometry(0.22, 0.012, 0.22);
   const topPlate = new THREE.Mesh(topGeo, darkMat);
   topPlate.position.y = 0.063;
   topPlate.castShadow = true;
   group.add(topPlate);
 
-  // Body edge trim (top)
   const trimMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
   const trimGeo = new THREE.BoxGeometry(0.285, 0.004, 0.285);
   const trim = new THREE.Mesh(trimGeo, trimMat);
   trim.position.y = 0.018;
   group.add(trim);
 
-  // Body panel lines (scored lines on top)
   const lineMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
   for (let i = -1; i <= 1; i += 2) {
     const line = new THREE.Mesh(
@@ -72,28 +66,23 @@ export function createDroneMesh() {
     group.add(line2);
   }
 
-  // === BATTERY ===
-  // Battery pack
   const battGeo = new THREE.BoxGeometry(0.14, 0.025, 0.1);
   const battery = new THREE.Mesh(battGeo, blackMat);
   battery.position.set(0, 0.072, 0.01);
   battery.castShadow = true;
   group.add(battery);
 
-  // Battery label stripe
   const labelGeo = new THREE.BoxGeometry(0.1, 0.003, 0.06);
   const labelMat = new THREE.MeshStandardMaterial({ color: 0x3fb950, roughness: 0.5 });
   const label = new THREE.Mesh(labelGeo, labelMat);
   label.position.set(0, 0.086, 0.01);
   group.add(label);
 
-  // Battery connector
   const connGeo = new THREE.BoxGeometry(0.03, 0.008, 0.015);
   const conn = new THREE.Mesh(connGeo, new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 }));
   conn.position.set(0, 0.078, -0.04);
   group.add(conn);
 
-  // === ARMS ===
   const armConfigs = [
     { x: 1, z: 1 },
     { x: -1, z: 1 },
@@ -102,7 +91,6 @@ export function createDroneMesh() {
   ];
 
   armConfigs.forEach(({ x, z }) => {
-    // Main arm beam
     const arm = new THREE.Mesh(
       new THREE.BoxGeometry(0.2, 0.022, 0.032),
       grayMat
@@ -111,7 +99,6 @@ export function createDroneMesh() {
     arm.castShadow = true;
     group.add(arm);
 
-    // Arm inner brace
     const brace = new THREE.Mesh(
       new THREE.BoxGeometry(0.1, 0.012, 0.018),
       grayMat
@@ -120,7 +107,6 @@ export function createDroneMesh() {
     brace.rotation.y = Math.atan2(z, x);
     group.add(brace);
 
-    // Arm wire channel
     const wireGeo = new THREE.BoxGeometry(0.16, 0.004, 0.006);
     const wireMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
     const wire = new THREE.Mesh(wireGeo, wireMat);
@@ -128,40 +114,34 @@ export function createDroneMesh() {
     wire.rotation.y = Math.atan2(z, x);
     group.add(wire);
 
-    // Motor mount ring
     const mountGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.008, 16);
     const mount = new THREE.Mesh(mountGeo, grayMat);
     mount.position.set(x * 0.28, 0.005, z * 0.28);
     group.add(mount);
 
-    // Motor housing (main)
     const motorGeo = new THREE.CylinderGeometry(0.042, 0.048, 0.032, 16);
     const motor = new THREE.Mesh(motorGeo, motorMat);
     motor.position.set(x * 0.28, 0.022, z * 0.28);
     motor.castShadow = true;
     group.add(motor);
 
-    // Motor top cap
     const capGeo = new THREE.CylinderGeometry(0.032, 0.042, 0.008, 16);
     const cap = new THREE.Mesh(capGeo, motorMat);
     cap.position.set(x * 0.28, 0.042, z * 0.28);
     group.add(cap);
 
-    // Motor shaft
     const shaftGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.015, 8);
     const shaftMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9 });
     const shaft = new THREE.Mesh(shaftGeo, shaftMat);
     shaft.position.set(x * 0.28, 0.052, z * 0.28);
     group.add(shaft);
 
-    // Motor windings (visible through gaps)
     const windingGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.015, 8);
     const windingMat = new THREE.MeshStandardMaterial({ color: 0xcc6600, roughness: 0.6, metalness: 0.4 });
     const winding = new THREE.Mesh(windingGeo, windingMat);
     winding.position.set(x * 0.28, 0.028, z * 0.28);
     group.add(winding);
 
-    // Propeller hub
     const hubGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.008, 8);
     const hubMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.8 });
     const hub = new THREE.Mesh(hubGeo, hubMat);
@@ -169,12 +149,10 @@ export function createDroneMesh() {
     hub.userData.isPropeller = true;
     group.add(hub);
 
-    // Propeller blades (2 blades per motor)
     for (let b = 0; b < 2; b++) {
       const bladeGroup = new THREE.Group();
       bladeGroup.position.set(x * 0.28, 0.058, z * 0.28);
 
-      // Main blade
       const bladeGeo = new THREE.BoxGeometry(0.22, 0.002, 0.018);
       const bladeMat = new THREE.MeshStandardMaterial({
         color: 0x888888, transparent: true, opacity: 0.45, roughness: 0.3
@@ -184,7 +162,6 @@ export function createDroneMesh() {
       blade.userData.isPropeller = true;
       bladeGroup.add(blade);
 
-      // Blade tip (slightly angled)
       const tipGeo = new THREE.BoxGeometry(0.04, 0.002, 0.012);
       const tip = new THREE.Mesh(tipGeo, bladeMat);
       tip.position.set(x * 0.1, 0, 0);
@@ -196,7 +173,6 @@ export function createDroneMesh() {
       group.add(bladeGroup);
     }
 
-    // Propeller guard (thin ring around prop)
     const guardGeo = new THREE.TorusGeometry(0.14, 0.003, 6, 24);
     const guardMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
     const guard = new THREE.Mesh(guardGeo, guardMat);
@@ -204,32 +180,27 @@ export function createDroneMesh() {
     guard.position.set(x * 0.28, 0.05, z * 0.28);
     group.add(guard);
 
-    // Landing gear strut
     const strutGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.035, 6);
     const strutMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
     const strut = new THREE.Mesh(strutGeo, strutMat);
     strut.position.set(x * 0.22, -0.03, z * 0.22);
     group.add(strut);
 
-    // Landing gear foot
     const footGeo = new THREE.CylinderGeometry(0.01, 0.014, 0.018, 8);
     const footMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
     const foot = new THREE.Mesh(footGeo, footMat);
     foot.position.set(x * 0.22, -0.052, z * 0.22);
     group.add(foot);
 
-    // Landing gear skid
     const skidGeo = new THREE.BoxGeometry(0.04, 0.004, 0.008);
     const skid = new THREE.Mesh(skidGeo, footMat);
     skid.position.set(x * 0.22, -0.062, z * 0.22);
     group.add(skid);
   });
 
-  // === LED STRIPS ===
   const ledGeo = new THREE.BoxGeometry(0.03, 0.008, 0.015);
   const defaultLedMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-  // Front LEDs
   const frontLedPositions = [
     { x: -0.06, z: -0.145 },
     { x: 0.06, z: -0.145 }
@@ -249,7 +220,6 @@ export function createDroneMesh() {
     group.add(glow);
   });
 
-  // Back LEDs
   const backLedPositions = [
     { x: -0.06, z: 0.145 },
     { x: 0.06, z: 0.145 }
@@ -269,7 +239,6 @@ export function createDroneMesh() {
     group.add(glow);
   });
 
-  // Side LEDs
   const sideLedPositions = [
     { x: -0.145, z: 0, zone: 'left' },
     { x: 0.145, z: 0, zone: 'right' }
@@ -292,7 +261,6 @@ export function createDroneMesh() {
     group.add(glow);
   });
 
-  // Bottom LEDs (4)
   const bottomLedPositions = [
     { x: -0.08, z: -0.08 },
     { x: 0.08, z: -0.08 },
@@ -312,7 +280,6 @@ export function createDroneMesh() {
     group.userData.leds.push(led);
   });
 
-  // Status LED (top center)
   const statusMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   const statusLed = new THREE.Mesh(
     new THREE.SphereGeometry(0.005, 8, 8),
@@ -321,8 +288,6 @@ export function createDroneMesh() {
   statusLed.position.set(0, 0.09, 0);
   group.add(statusLed);
 
-  // === SENSORS ===
-  // Bottom range sensor
   const rangeSensorGroup = new THREE.Group();
   rangeSensorGroup.position.set(0, -0.038, -0.04);
 
@@ -349,7 +314,6 @@ export function createDroneMesh() {
   rangeSensorGroup.userData.sensorType = 'range_bottom';
   group.add(rangeSensorGroup);
 
-  // Front range sensor
   const frontSensorGroup = new THREE.Group();
   frontSensorGroup.position.set(0, -0.005, -0.145);
 
@@ -372,7 +336,6 @@ export function createDroneMesh() {
   frontSensorGroup.userData.sensorType = 'range_front';
   group.add(frontSensorGroup);
 
-  // Color sensor
   const colorSensorGroup = new THREE.Group();
   colorSensorGroup.position.set(0, -0.038, 0.04);
 
@@ -399,7 +362,6 @@ export function createDroneMesh() {
   colorSensorGroup.userData.sensorType = 'color';
   group.add(colorSensorGroup);
 
-  // === CAMERA ===
   const camGroup = new THREE.Group();
   camGroup.position.set(0, 0.01, -0.145);
 
@@ -417,14 +379,12 @@ export function createDroneMesh() {
   camLens.position.z = -0.015;
   camGroup.add(camLens);
 
-  // Camera lens ring
   const lensRingGeo = new THREE.TorusGeometry(0.01, 0.002, 8, 16);
   const lensRing = new THREE.Mesh(lensRingGeo, sensorRingMat);
   lensRing.rotation.x = Math.PI / 2;
   lensRing.position.z = -0.015;
   camGroup.add(lensRing);
 
-  // IR dot
   const irDot = new THREE.Mesh(
     new THREE.SphereGeometry(0.003, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0x440000 })
@@ -436,11 +396,9 @@ export function createDroneMesh() {
   camGroup.userData.sensorType = 'camera';
   group.add(camGroup);
 
-  // === ANTENNA ===
   const antennaBaseMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
   const antennaMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5 });
 
-  // Antenna base
   const antennaBase = new THREE.Mesh(
     new THREE.CylinderGeometry(0.008, 0.01, 0.015, 8),
     antennaBaseMat
@@ -448,7 +406,6 @@ export function createDroneMesh() {
   antennaBase.position.set(0.08, 0.072, 0);
   group.add(antennaBase);
 
-  // Antenna pole
   const antennaPole = new THREE.Mesh(
     new THREE.CylinderGeometry(0.003, 0.004, 0.05, 8),
     antennaMat
@@ -456,7 +413,6 @@ export function createDroneMesh() {
   antennaPole.position.set(0.08, 0.1, 0);
   group.add(antennaPole);
 
-  // Antenna segments
   for (let i = 0; i < 3; i++) {
     const seg = new THREE.Mesh(
       new THREE.CylinderGeometry(0.002, 0.003, 0.012, 6),
@@ -466,7 +422,6 @@ export function createDroneMesh() {
     group.add(seg);
   }
 
-  // Antenna tip
   const antennaTip = new THREE.Mesh(
     new THREE.SphereGeometry(0.005, 10, 10),
     new THREE.MeshStandardMaterial({ color: 0xf85149, roughness: 0.4 })
@@ -474,7 +429,6 @@ export function createDroneMesh() {
   antennaTip.position.set(0.08, 0.135, 0);
   group.add(antennaTip);
 
-  // === FRONT INDICATOR ===
   const frontArrowGeo = new THREE.ConeGeometry(0.04, 0.08, 3);
   const frontArrowMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
   const frontArrow = new THREE.Mesh(frontArrowGeo, frontArrowMat);
@@ -483,7 +437,6 @@ export function createDroneMesh() {
   frontArrow.userData.isFrontIndicator = true;
   group.add(frontArrow);
 
-  // FRONT label
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 64;
@@ -503,7 +456,6 @@ export function createDroneMesh() {
   sprite.userData.isFrontIndicator = true;
   group.add(sprite);
 
-  // === SIDE VENTS ===
   const ventMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 4; i++) {
@@ -516,8 +468,6 @@ export function createDroneMesh() {
     }
   }
 
-  // === BOTTOM DETAILS ===
-  // Bottom plate texture lines
   const bottomLineMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
   for (let i = -1; i <= 1; i += 2) {
     const bline = new THREE.Mesh(
@@ -528,7 +478,6 @@ export function createDroneMesh() {
     group.add(bline);
   }
 
-  // Bottom screw holes (4 corners)
   const screwMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8 });
   [
     { x: -0.1, z: -0.1 },

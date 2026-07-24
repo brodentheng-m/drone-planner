@@ -98,14 +98,14 @@ export class Scene3D {
   }
 
   _addLights() {
-    const ambient = new THREE.AmbientLight(0x404060, 0.5);
+    const ambient = new THREE.AmbientLight(0x303050, 0.4);
     this.scene.add(ambient);
 
-    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362a28, 0.6);
+    const hemi = new THREE.HemisphereLight(0x9ecfff, 0x443322, 0.7);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff4e0, 1.2);
-    sun.position.set(8, 15, 5);
+    const sun = new THREE.DirectionalLight(0xfff0d0, 1.4);
+    sun.position.set(10, 18, 6);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 0.5;
@@ -118,13 +118,21 @@ export class Scene3D {
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
 
-    const fill = new THREE.DirectionalLight(0x6080c0, 0.4);
-    fill.position.set(-6, 8, -4);
+    const fill = new THREE.DirectionalLight(0x7090cc, 0.5);
+    fill.position.set(-8, 10, -5);
     this.scene.add(fill);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 0.3);
-    rim.position.set(-3, 10, 10);
+    const rim = new THREE.DirectionalLight(0xd0e0ff, 0.35);
+    rim.position.set(-4, 12, 12);
     this.scene.add(rim);
+
+    const ground = new THREE.DirectionalLight(0x554433, 0.2);
+    ground.position.set(0, -5, 0);
+    this.scene.add(ground);
+
+    const key = new THREE.PointLight(0xffeedd, 0.3, 30);
+    key.position.set(5, 8, 0);
+    this.scene.add(key);
   }
 
   _addGround() {
@@ -368,8 +376,20 @@ export class Scene3D {
         if (!mesh || result.positions.length === 0) continue;
 
         const positions = result.positions;
-        const idx = Math.min(Math.floor(t * (positions.length - 1)), positions.length - 1);
-        const p = positions[idx];
+        const rawIdx = t * (positions.length - 1);
+        const idx = Math.min(Math.floor(rawIdx), positions.length - 2);
+        const frac = rawIdx - idx;
+        const a = positions[idx];
+        const b = positions[Math.min(idx + 1, positions.length - 1)];
+        const p = {
+          x: a.x + (b.x - a.x) * frac,
+          y: a.y + (b.y - a.y) * frac,
+          z: a.z + (b.z - a.z) * frac,
+          heading: a.heading + ((b.heading || 0) - (a.heading || 0)) * frac,
+          pitch: a.pitch + ((b.pitch || 0) - (a.pitch || 0)) * frac,
+          roll: a.roll + ((b.roll || 0) - (a.roll || 0)) * frac,
+          led: frac < 0.5 ? a.led : b.led
+        };
 
         mesh.position.set(p.x, p.z, p.y);
 
