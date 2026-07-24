@@ -18,117 +18,218 @@ export function createDroneMesh() {
   const group = new THREE.Group();
   group.userData.leds = [];
 
-  // === BODY ===
-  // Main body shell
-  const bodyGeo = new THREE.BoxGeometry(0.28, 0.07, 0.28);
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2d5aa0, roughness: 0.35, metalness: 0.4 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.castShadow = true;
-  body.receiveShadow = true;
-  group.add(body);
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: 0.4, metalness: 0.5 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6 });
+  const grayMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.3 });
+  const motorMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.6 });
+  const sensorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.7 });
+  const sensorRingMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.4, metalness: 0.8 });
+
+  // === MAIN BODY ===
+  // Lower chassis
+  const lowerGeo = new THREE.BoxGeometry(0.28, 0.035, 0.28);
+  const lower = new THREE.Mesh(lowerGeo, bodyMat);
+  lower.castShadow = true;
+  lower.receiveShadow = true;
+  group.add(lower);
+
+  // Upper shell (rounded look via beveled box)
+  const upperGeo = new THREE.BoxGeometry(0.26, 0.04, 0.26);
+  const upper = new THREE.Mesh(upperGeo, bodyMat);
+  upper.position.y = 0.037;
+  upper.castShadow = true;
+  group.add(upper);
 
   // Top plate (flight controller cover)
-  const topGeo = new THREE.BoxGeometry(0.22, 0.015, 0.22);
-  const topMat = new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: 0.4, metalness: 0.5 });
-  const topPlate = new THREE.Mesh(topGeo, topMat);
-  topPlate.position.y = 0.042;
+  const topGeo = new THREE.BoxGeometry(0.22, 0.012, 0.22);
+  const topPlate = new THREE.Mesh(topGeo, darkMat);
+  topPlate.position.y = 0.063;
   topPlate.castShadow = true;
   group.add(topPlate);
 
-  // Battery bump (center top)
-  const battGeo = new THREE.BoxGeometry(0.14, 0.02, 0.1);
-  const battMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
-  const battery = new THREE.Mesh(battGeo, battMat);
-  battery.position.set(0, 0.058, 0.01);
+  // Body edge trim (top)
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
+  const trimGeo = new THREE.BoxGeometry(0.285, 0.004, 0.285);
+  const trim = new THREE.Mesh(trimGeo, trimMat);
+  trim.position.y = 0.018;
+  group.add(trim);
+
+  // Body panel lines (scored lines on top)
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
+  for (let i = -1; i <= 1; i += 2) {
+    const line = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 0.001, 0.002),
+      lineMat
+    );
+    line.position.set(0, 0.064, i * 0.06);
+    group.add(line);
+    const line2 = new THREE.Mesh(
+      new THREE.BoxGeometry(0.002, 0.001, 0.2),
+      lineMat
+    );
+    line2.position.set(i * 0.06, 0.064, 0);
+    group.add(line2);
+  }
+
+  // === BATTERY ===
+  // Battery pack
+  const battGeo = new THREE.BoxGeometry(0.14, 0.025, 0.1);
+  const battery = new THREE.Mesh(battGeo, blackMat);
+  battery.position.set(0, 0.072, 0.01);
   battery.castShadow = true;
   group.add(battery);
 
   // Battery label stripe
-  const labelGeo = new THREE.BoxGeometry(0.1, 0.005, 0.06);
+  const labelGeo = new THREE.BoxGeometry(0.1, 0.003, 0.06);
   const labelMat = new THREE.MeshStandardMaterial({ color: 0x3fb950, roughness: 0.5 });
   const label = new THREE.Mesh(labelGeo, labelMat);
-  label.position.set(0, 0.07, 0.01);
+  label.position.set(0, 0.086, 0.01);
   group.add(label);
 
-  // === ARMS ===
-  const armMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.3 });
-  const motorMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.4, metalness: 0.6 });
+  // Battery connector
+  const connGeo = new THREE.BoxGeometry(0.03, 0.008, 0.015);
+  const conn = new THREE.Mesh(connGeo, new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 }));
+  conn.position.set(0, 0.078, -0.04);
+  group.add(conn);
 
+  // === ARMS ===
   const armConfigs = [
-    { x: 1, z: 1, ledFront: true },
-    { x: -1, z: 1, ledFront: true },
-    { x: 1, z: -1, ledFront: false },
-    { x: -1, z: -1, ledFront: false }
+    { x: 1, z: 1 },
+    { x: -1, z: 1 },
+    { x: 1, z: -1 },
+    { x: -1, z: -1 }
   ];
 
   armConfigs.forEach(({ x, z }) => {
-    // Arm beam
+    // Main arm beam
     const arm = new THREE.Mesh(
-      new THREE.BoxGeometry(0.2, 0.025, 0.035),
-      armMat
+      new THREE.BoxGeometry(0.2, 0.022, 0.032),
+      grayMat
     );
     arm.position.set(x * 0.18, 0, z * 0.18);
     arm.castShadow = true;
     group.add(arm);
 
-    // Arm brace (diagonal support)
+    // Arm inner brace
     const brace = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.015, 0.02),
-      armMat
+      new THREE.BoxGeometry(0.1, 0.012, 0.018),
+      grayMat
     );
-    brace.position.set(x * 0.12, -0.015, z * 0.12);
+    brace.position.set(x * 0.13, -0.012, z * 0.13);
     brace.rotation.y = Math.atan2(z, x);
     group.add(brace);
 
-    // Motor housing
-    const motorGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.035, 12);
+    // Arm wire channel
+    const wireGeo = new THREE.BoxGeometry(0.16, 0.004, 0.006);
+    const wireMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
+    const wire = new THREE.Mesh(wireGeo, wireMat);
+    wire.position.set(x * 0.17, 0.012, z * 0.17);
+    wire.rotation.y = Math.atan2(z, x);
+    group.add(wire);
+
+    // Motor mount ring
+    const mountGeo = new THREE.CylinderGeometry(0.052, 0.052, 0.008, 16);
+    const mount = new THREE.Mesh(mountGeo, grayMat);
+    mount.position.set(x * 0.28, 0.005, z * 0.28);
+    group.add(mount);
+
+    // Motor housing (main)
+    const motorGeo = new THREE.CylinderGeometry(0.042, 0.048, 0.032, 16);
     const motor = new THREE.Mesh(motorGeo, motorMat);
-    motor.position.set(x * 0.28, 0.015, z * 0.28);
+    motor.position.set(x * 0.28, 0.022, z * 0.28);
     motor.castShadow = true;
     group.add(motor);
 
     // Motor top cap
-    const capGeo = new THREE.CylinderGeometry(0.035, 0.045, 0.01, 12);
+    const capGeo = new THREE.CylinderGeometry(0.032, 0.042, 0.008, 16);
     const cap = new THREE.Mesh(capGeo, motorMat);
-    cap.position.set(x * 0.28, 0.035, z * 0.28);
+    cap.position.set(x * 0.28, 0.042, z * 0.28);
     group.add(cap);
 
-    // Propeller disc
-    const propGeo = new THREE.CircleGeometry(0.13, 20);
-    const propMat = new THREE.MeshStandardMaterial({
-      color: 0x888888, side: THREE.DoubleSide, transparent: true, opacity: 0.35
-    });
-    const prop = new THREE.Mesh(propGeo, propMat);
-    prop.rotation.x = -Math.PI / 2;
-    prop.position.set(x * 0.28, 0.042, z * 0.28);
-    prop.userData.isPropeller = true;
-    prop.userData.axis = { x, z };
-    group.add(prop);
+    // Motor shaft
+    const shaftGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.015, 8);
+    const shaftMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9 });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    shaft.position.set(x * 0.28, 0.052, z * 0.28);
+    group.add(shaft);
 
-    // Propeller blade hints (2 thin lines)
+    // Motor windings (visible through gaps)
+    const windingGeo = new THREE.CylinderGeometry(0.028, 0.028, 0.015, 8);
+    const windingMat = new THREE.MeshStandardMaterial({ color: 0xcc6600, roughness: 0.6, metalness: 0.4 });
+    const winding = new THREE.Mesh(windingGeo, windingMat);
+    winding.position.set(x * 0.28, 0.028, z * 0.28);
+    group.add(winding);
+
+    // Propeller hub
+    const hubGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.008, 8);
+    const hubMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.8 });
+    const hub = new THREE.Mesh(hubGeo, hubMat);
+    hub.position.set(x * 0.28, 0.056, z * 0.28);
+    hub.userData.isPropeller = true;
+    group.add(hub);
+
+    // Propeller blades (2 blades per motor)
     for (let b = 0; b < 2; b++) {
-      const bladeGeo = new THREE.BoxGeometry(0.24, 0.002, 0.015);
-      const bladeMat = new THREE.MeshStandardMaterial({ color: 0x666666, transparent: true, opacity: 0.5 });
+      const bladeGroup = new THREE.Group();
+      bladeGroup.position.set(x * 0.28, 0.058, z * 0.28);
+
+      // Main blade
+      const bladeGeo = new THREE.BoxGeometry(0.22, 0.002, 0.018);
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0x888888, transparent: true, opacity: 0.45, roughness: 0.3
+      });
       const blade = new THREE.Mesh(bladeGeo, bladeMat);
-      blade.position.set(x * 0.28, 0.044, z * 0.28);
       blade.rotation.y = b * Math.PI / 2;
       blade.userData.isPropeller = true;
-      group.add(blade);
+      bladeGroup.add(blade);
+
+      // Blade tip (slightly angled)
+      const tipGeo = new THREE.BoxGeometry(0.04, 0.002, 0.012);
+      const tip = new THREE.Mesh(tipGeo, bladeMat);
+      tip.position.set(x * 0.1, 0, 0);
+      tip.rotation.y = b * Math.PI / 2;
+      tip.rotation.z = 0.1;
+      tip.userData.isPropeller = true;
+      bladeGroup.add(tip);
+
+      group.add(bladeGroup);
     }
 
-    // Landing gear feet
-    const footGeo = new THREE.CylinderGeometry(0.012, 0.015, 0.025, 6);
+    // Propeller guard (thin ring around prop)
+    const guardGeo = new THREE.TorusGeometry(0.14, 0.003, 6, 24);
+    const guardMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
+    const guard = new THREE.Mesh(guardGeo, guardMat);
+    guard.rotation.x = Math.PI / 2;
+    guard.position.set(x * 0.28, 0.05, z * 0.28);
+    group.add(guard);
+
+    // Landing gear strut
+    const strutGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.035, 6);
+    const strutMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
+    const strut = new THREE.Mesh(strutGeo, strutMat);
+    strut.position.set(x * 0.22, -0.03, z * 0.22);
+    group.add(strut);
+
+    // Landing gear foot
+    const footGeo = new THREE.CylinderGeometry(0.01, 0.014, 0.018, 8);
     const footMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.7 });
     const foot = new THREE.Mesh(footGeo, footMat);
-    foot.position.set(x * 0.22, -0.045, z * 0.22);
+    foot.position.set(x * 0.22, -0.052, z * 0.22);
     group.add(foot);
+
+    // Landing gear skid
+    const skidGeo = new THREE.BoxGeometry(0.04, 0.004, 0.008);
+    const skid = new THREE.Mesh(skidGeo, footMat);
+    skid.position.set(x * 0.22, -0.062, z * 0.22);
+    group.add(skid);
   });
 
   // === LED STRIPS ===
   const ledGeo = new THREE.BoxGeometry(0.03, 0.008, 0.015);
   const defaultLedMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-  // Front LEDs (2 - left and right of front face)
+  // Front LEDs
   const frontLedPositions = [
     { x: -0.06, z: -0.145 },
     { x: 0.06, z: -0.145 }
@@ -148,7 +249,7 @@ export function createDroneMesh() {
     group.add(glow);
   });
 
-  // Back LEDs (2 - left and right of back face)
+  // Back LEDs
   const backLedPositions = [
     { x: -0.06, z: 0.145 },
     { x: 0.06, z: 0.145 }
@@ -168,7 +269,7 @@ export function createDroneMesh() {
     group.add(glow);
   });
 
-  // Side LEDs (1 per side)
+  // Side LEDs
   const sideLedPositions = [
     { x: -0.145, z: 0, zone: 'left' },
     { x: 0.145, z: 0, zone: 'right' }
@@ -191,7 +292,7 @@ export function createDroneMesh() {
     group.add(glow);
   });
 
-  // Bottom LEDs (4 - corners underneath)
+  // Bottom LEDs (4)
   const bottomLedPositions = [
     { x: -0.08, z: -0.08 },
     { x: 0.08, z: -0.08 },
@@ -211,11 +312,17 @@ export function createDroneMesh() {
     group.userData.leds.push(led);
   });
 
-  // === SENSORS ===
-  // Bottom range sensor (ultrasonic - two circles)
-  const sensorMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.7 });
-  const sensorRingMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.4, metalness: 0.8 });
+  // Status LED (top center)
+  const statusMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  const statusLed = new THREE.Mesh(
+    new THREE.SphereGeometry(0.005, 8, 8),
+    statusMat
+  );
+  statusLed.position.set(0, 0.09, 0);
+  group.add(statusLed);
 
+  // === SENSORS ===
+  // Bottom range sensor
   const rangeSensorGroup = new THREE.Group();
   rangeSensorGroup.position.set(0, -0.038, -0.04);
 
@@ -225,14 +332,13 @@ export function createDroneMesh() {
   );
   rangeSensorGroup.add(rangeBody);
 
-  // Two ultrasonic transducers
   for (let side = -1; side <= 1; side += 2) {
-    const transGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.012, 10);
+    const transGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.012, 12);
     const trans = new THREE.Mesh(transGeo, sensorRingMat);
     trans.position.set(side * 0.015, -0.01, 0);
     rangeSensorGroup.add(trans);
 
-    const ringGeo = new THREE.TorusGeometry(0.01, 0.002, 6, 12);
+    const ringGeo = new THREE.TorusGeometry(0.01, 0.002, 8, 16);
     const ring = new THREE.Mesh(ringGeo, sensorRingMat);
     ring.rotation.x = Math.PI / 2;
     ring.position.set(side * 0.015, -0.017, 0);
@@ -253,8 +359,7 @@ export function createDroneMesh() {
   );
   frontSensorGroup.add(frontSensorBody);
 
-  // Front sensor lens
-  const lensGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.01, 8);
+  const lensGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.01, 12);
   const lensMat = new THREE.MeshStandardMaterial({ color: 0x111133, roughness: 0.2, metalness: 0.9 });
   for (let side = -1; side <= 1; side += 2) {
     const lens = new THREE.Mesh(lensGeo, lensMat);
@@ -267,26 +372,24 @@ export function createDroneMesh() {
   frontSensorGroup.userData.sensorType = 'range_front';
   group.add(frontSensorGroup);
 
-  // Color sensor (bottom center)
+  // Color sensor
   const colorSensorGroup = new THREE.Group();
   colorSensorGroup.position.set(0, -0.038, 0.04);
 
   const csBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.018, 0.01, 10),
+    new THREE.CylinderGeometry(0.018, 0.018, 0.01, 12),
     sensorMat
   );
   colorSensorGroup.add(csBody);
 
-  // Color sensor window (4 small quadrants)
   const windowMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2, metalness: 0.5 });
   const windowGeo = new THREE.BoxGeometry(0.008, 0.003, 0.008);
-  const windowPositions = [
+  [
     { x: -0.005, z: -0.005 },
     { x: 0.005, z: -0.005 },
     { x: -0.005, z: 0.005 },
     { x: 0.005, z: 0.005 }
-  ];
-  windowPositions.forEach(pos => {
+  ].forEach(pos => {
     const w = new THREE.Mesh(windowGeo, windowMat);
     w.position.set(pos.x, -0.007, pos.z);
     colorSensorGroup.add(w);
@@ -307,16 +410,23 @@ export function createDroneMesh() {
   camGroup.add(camBody);
 
   const camLens = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.01, 0.012, 10),
+    new THREE.CylinderGeometry(0.008, 0.01, 0.012, 12),
     new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.1, metalness: 0.9 })
   );
   camLens.rotation.x = Math.PI / 2;
   camLens.position.z = -0.015;
   camGroup.add(camLens);
 
-  // Camera IR dot
+  // Camera lens ring
+  const lensRingGeo = new THREE.TorusGeometry(0.01, 0.002, 8, 16);
+  const lensRing = new THREE.Mesh(lensRingGeo, sensorRingMat);
+  lensRing.rotation.x = Math.PI / 2;
+  lensRing.position.z = -0.015;
+  camGroup.add(lensRing);
+
+  // IR dot
   const irDot = new THREE.Mesh(
-    new THREE.SphereGeometry(0.003, 6, 6),
+    new THREE.SphereGeometry(0.003, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0x440000 })
   );
   irDot.position.set(0.012, 0, -0.015);
@@ -327,43 +437,112 @@ export function createDroneMesh() {
   group.add(camGroup);
 
   // === ANTENNA ===
-  const antennaMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
+  const antennaBaseMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
+  const antennaMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5 });
 
+  // Antenna base
+  const antennaBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.008, 0.01, 0.015, 8),
+    antennaBaseMat
+  );
+  antennaBase.position.set(0.08, 0.072, 0);
+  group.add(antennaBase);
+
+  // Antenna pole
   const antennaPole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.004, 0.004, 0.06, 6),
+    new THREE.CylinderGeometry(0.003, 0.004, 0.05, 8),
     antennaMat
   );
-  antennaPole.position.set(0.08, 0.09, 0);
+  antennaPole.position.set(0.08, 0.1, 0);
   group.add(antennaPole);
 
+  // Antenna segments
+  for (let i = 0; i < 3; i++) {
+    const seg = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.002, 0.003, 0.012, 6),
+      antennaMat
+    );
+    seg.position.set(0.08, 0.108 + i * 0.015, 0);
+    group.add(seg);
+  }
+
+  // Antenna tip
   const antennaTip = new THREE.Mesh(
-    new THREE.SphereGeometry(0.006, 8, 8),
+    new THREE.SphereGeometry(0.005, 10, 10),
     new THREE.MeshStandardMaterial({ color: 0xf85149, roughness: 0.4 })
   );
-  antennaTip.position.set(0.08, 0.12, 0);
+  antennaTip.position.set(0.08, 0.135, 0);
   group.add(antennaTip);
 
-  // === FRONT INDICATOR (direction marker) ===
-  const frontGeo = new THREE.ConeGeometry(0.025, 0.05, 4);
-  const frontMat = new THREE.MeshBasicMaterial({ color: 0x3fb950 });
-  const front = new THREE.Mesh(frontGeo, frontMat);
-  front.position.set(0, 0.015, -0.155);
-  front.rotation.x = Math.PI / 2;
-  front.userData.isFrontIndicator = true;
-  group.add(front);
+  // === FRONT INDICATOR ===
+  const frontArrowGeo = new THREE.ConeGeometry(0.04, 0.08, 3);
+  const frontArrowMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+  const frontArrow = new THREE.Mesh(frontArrowGeo, frontArrowMat);
+  frontArrow.position.set(0, 0.015, -0.17);
+  frontArrow.rotation.x = Math.PI / 2;
+  frontArrow.userData.isFrontIndicator = true;
+  group.add(frontArrow);
 
-  // === SIDE DECALS (Cooling vents) ===
+  // FRONT label
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(0,0,0,0)';
+  ctx.fillRect(0, 0, 256, 64);
+  ctx.font = 'bold 48px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ff4444';
+  ctx.fillText('FRONT', 128, 32);
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(0.18, 0.045, 1);
+  sprite.position.set(0, 0.08, -0.17);
+  sprite.userData.isFrontIndicator = true;
+  group.add(sprite);
+
+  // === SIDE VENTS ===
   const ventMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
   for (let side = -1; side <= 1; side += 2) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const vent = new THREE.Mesh(
-        new THREE.BoxGeometry(0.002, 0.02, 0.04),
+        new THREE.BoxGeometry(0.002, 0.018, 0.025),
         ventMat
       );
-      vent.position.set(side * 0.142, 0.005, -0.04 + i * 0.04);
+      vent.position.set(side * 0.142, 0.005, -0.05 + i * 0.032);
       group.add(vent);
     }
   }
+
+  // === BOTTOM DETAILS ===
+  // Bottom plate texture lines
+  const bottomLineMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
+  for (let i = -1; i <= 1; i += 2) {
+    const bline = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.001, 0.002),
+      bottomLineMat
+    );
+    bline.position.set(0, -0.036, i * 0.05);
+    group.add(bline);
+  }
+
+  // Bottom screw holes (4 corners)
+  const screwMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8 });
+  [
+    { x: -0.1, z: -0.1 },
+    { x: 0.1, z: -0.1 },
+    { x: -0.1, z: 0.1 },
+    { x: 0.1, z: 0.1 }
+  ].forEach(pos => {
+    const screw = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.004, 0.004, 0.002, 8),
+      screwMat
+    );
+    screw.position.set(pos.x, -0.036, pos.z);
+    group.add(screw);
+  });
 
   return group;
 }

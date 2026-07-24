@@ -105,7 +105,15 @@ html, body {
 /* Left Panel */
 #left-panel {
   width: 260px; background: var(--bg-medium); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+  display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+}
+
+#left-top {
+  flex: 1; overflow-y: auto; min-height: 0;
+}
+
+#left-bottom {
+  flex: 1; overflow-y: auto; min-height: 0; border-top: 1px solid var(--border);
 }
 
 #left-panel h3 {
@@ -154,8 +162,8 @@ html, body {
 .cat-timer { border-left: 2px solid var(--orange); }
 .cat-timer:hover { background: rgba(210,153,34,0.15); border-color: var(--orange); }
 
-/* Command Options */
-#cmd-options { border-top: 1px solid var(--border); padding: 4px 0; }
+/* Command Options - hidden, using inline edit instead */
+#cmd-options { display: none; }
 
 #dynamic-options { padding: 4px 10px; }
 #dynamic-options label {
@@ -168,7 +176,7 @@ html, body {
 }
 
 /* Command List */
-#command-list-panel { flex: 1; overflow-y: auto; }
+#command-list-panel { padding-bottom: 10px; }
 
 #command-list { padding: 0 6px 10px; }
 
@@ -234,6 +242,30 @@ html, body {
   font-size: 9px;
 }
 .cmd-block-add button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Inline edit */
+.cmd-inline-edit {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 6px 6px 28px;
+  background: var(--bg-dark); border: 1px solid var(--border);
+  border-top: none; border-radius: 0 0 4px 4px; margin-top: -3px;
+  margin-bottom: 3px;
+}
+
+.cmd-inline-field {
+  display: flex; flex-direction: column; gap: 1px;
+}
+
+.cmd-inline-field label {
+  font-size: 9px; color: var(--text-dim); text-transform: uppercase;
+}
+
+.cmd-inline-field select,
+.cmd-inline-field input {
+  background: var(--bg-light); color: var(--text); border: 1px solid var(--border);
+  padding: 3px 5px; border-radius: 3px; font-size: 11px; width: 70px;
+}
+
+.cmd-inline-field select { width: 80px; }
 
 .cmd-block-close {
   border-top-left-radius: 0;

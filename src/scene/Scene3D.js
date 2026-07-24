@@ -373,7 +373,7 @@ export class Scene3D {
 
         mesh.position.set(p.x, p.z, p.y);
 
-        const yaw = -(p.heading || 0) * Math.PI / 180;
+        const yaw = -(p.heading || 0) * Math.PI / 180 - Math.PI / 2;
         const pitch = -(p.pitch || 0) * Math.PI / 180;
         const roll = -(p.roll || 0) * Math.PI / 180;
 

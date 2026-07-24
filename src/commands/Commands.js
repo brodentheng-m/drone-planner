@@ -26,9 +26,18 @@ export const COMMAND_DEFS = {
   ], code: (p) => `drone.move_right(${p.dist}, ${p.power})` },
   turn_left:      { label: 'Turn Left',       params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_left(${p.deg})` },
   turn_right:     { label: 'Turn Right',      params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_right(${p.deg})` },
-  circle:         { label: 'Circle',          params: [],                                     code: 'drone.circle()' },
-  square:         { label: 'Square',          params: [],                                     code: 'drone.square()' },
-  triangle:       { label: 'Triangle',        params: [],                                     code: 'drone.triangle()' },
+  circle:         { label: 'Circle',          params: [
+    { key: 'radius', label: 'Radius cm', type: 'number', default: 50, min: 20, max: 200 },
+    { key: 'power', label: 'Power', type: 'number', default: 50, min: 10, max: 100 }
+  ], code: (p) => `drone.circle(${p.radius}, ${p.power})` },
+  square:         { label: 'Square',          params: [
+    { key: 'size', label: 'Size cm', type: 'number', default: 50, min: 20, max: 200 },
+    { key: 'power', label: 'Power', type: 'number', default: 50, min: 10, max: 100 }
+  ], code: (p) => `drone.square(${p.size}, ${p.power})` },
+  triangle:       { label: 'Triangle',        params: [
+    { key: 'size', label: 'Size cm', type: 'number', default: 50, min: 20, max: 200 },
+    { key: 'power', label: 'Power', type: 'number', default: 50, min: 10, max: 100 }
+  ], code: (p) => `drone.triangle(${p.size}, ${p.power})` },
 
   led:            { label: 'LED',             params: [
     { key: 'color', label: 'Color', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','purple','orange','pink','off'], default: 'green' }
@@ -38,6 +47,7 @@ export const COMMAND_DEFS = {
     { key: 'dur', label: 'Secs', type: 'number', default: 0.5, min: 0.1, max: 5, step: 0.1 }
   ], code: (p) => `drone.set_buzzer(${p.freq}, ${p.dur})` },
   random_led:     { label: 'Random LED',      params: [],                                     code: 'drone.random_color()' },
+  drone_sleep:    { label: 'Drone Sleep',     params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10, step: 0.1 }], code: (p) => `drone.sleep(${p.dur})` },
 
   var_declare:    { label: 'Var',             params: [
     { key: 'name', label: 'Name', type: 'text', default: 'x' },

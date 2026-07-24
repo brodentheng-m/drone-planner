@@ -381,18 +381,19 @@ function renderCommandsRecursive(commands, container, depth, parentPath) {
     const path = [...parentPath, idx];
     const isBlock = isBlockCommand(cmd);
     const cat = CMD_CATEGORIES[cmd.type] || '';
+    const isSelected = selectedPath && pathsEqual(selectedPath, path);
 
     const item = document.createElement('div');
     item.className = `cmd-item ${cat}`;
     if (isBlock) item.classList.add('block-open');
-    if (selectedPath && pathsEqual(selectedPath, path)) item.classList.add('selected');
+    if (isSelected) item.classList.add('selected');
 
     const num = depth === 0 ? idx + 1 : `${parentPath.join('.')}.${idx}`;
 
     item.innerHTML = `
       <span class="cmd-num">${num}</span>
       <span class="cmd-name">${getCommandLabel(cmd)}</span>
-      <span class="cmd-params">${getCommandParams(cmd)}</span>
+      <span class="cmd-params">${isSelected ? '' : getCommandParams(cmd)}</span>
       <span class="cmd-actions">
         <button class="cmd-up" title="Move up" ${idx === 0 ? 'disabled' : ''}>&#x25B2;</button>
         <button class="cmd-down" title="Move down" ${idx === commands.length - 1 ? 'disabled' : ''}>&#x25BC;</button>
@@ -402,9 +403,9 @@ function renderCommandsRecursive(commands, container, depth, parentPath) {
 
     item.addEventListener('click', (e) => {
       if (e.target.closest('.cmd-actions')) return;
+      if (e.target.closest('.cmd-inline-edit')) return;
       selectedPath = path;
       renderCommandList();
-      showCmdOptions(cmd);
     });
 
     item.querySelector('.cmd-up').addEventListener('click', (e) => {
@@ -437,6 +438,63 @@ function renderCommandsRecursive(commands, container, depth, parentPath) {
     });
 
     container.appendChild(item);
+
+    if (isSelected) {
+      const def = COMMAND_DEFS[cmd.type];
+      if (def && def.params.length > 0) {
+        const editRow = document.createElement('div');
+        editRow.className = 'cmd-inline-edit';
+        for (const paramDef of def.params) {
+          const field = document.createElement('div');
+          field.className = 'cmd-inline-field';
+          const lbl = document.createElement('label');
+          lbl.textContent = paramDef.label;
+
+          let el;
+          if (paramDef.type === 'select') {
+            el = document.createElement('select');
+            for (const opt of paramDef.options) {
+              const option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt.charAt(0).toUpperCase() + opt.slice(1);
+              el.appendChild(option);
+            }
+            el.value = cmd.params[paramDef.key] || paramDef.default;
+            el.addEventListener('change', () => {
+              cmd.params[paramDef.key] = el.value;
+              updateCodePreview();
+              renderCommandList();
+            });
+          } else if (paramDef.type === 'text') {
+            el = document.createElement('input');
+            el.type = 'text';
+            el.value = cmd.params[paramDef.key] || paramDef.default;
+            el.addEventListener('input', () => {
+              cmd.params[paramDef.key] = el.value;
+              updateCodePreview();
+            });
+            el.addEventListener('blur', () => renderCommandList());
+          } else {
+            el = document.createElement('input');
+            el.type = 'number';
+            el.value = cmd.params[paramDef.key] ?? paramDef.default;
+            if (paramDef.min !== undefined) el.min = paramDef.min;
+            if (paramDef.max !== undefined) el.max = paramDef.max;
+            if (paramDef.step) el.step = paramDef.step;
+            el.addEventListener('input', () => {
+              cmd.params[paramDef.key] = parseFloat(el.value) || paramDef.default;
+              updateCodePreview();
+            });
+            el.addEventListener('blur', () => renderCommandList());
+          }
+
+          lbl.appendChild(el);
+          field.appendChild(lbl);
+          editRow.appendChild(field);
+        }
+        container.appendChild(editRow);
+      }
+    }
 
     if (isBlock && cmd.children) {
       const childContainer = document.createElement('div');
@@ -535,11 +593,6 @@ function refresh() {
   renderCommandList();
   updateCodePreview();
   document.getElementById('plan-name').textContent = plan.name || 'Untitled Flight Plan';
-
-  if (selectedPath) {
-    const cmd = getCommandByPath(getActiveCommands(plan), selectedPath);
-    if (cmd) showCmdOptions(cmd);
-  }
 
   const sim = simulateSwarm(plan.drones);
   scene3d.setSwarm(plan.drones);
