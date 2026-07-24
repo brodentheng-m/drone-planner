@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*;" />
+  <title>Drone Planner</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="toolbar">
+      <div class="toolbar-left">
+        <button id="btn-new" title="New Plan">New</button>
+        <button id="btn-save" title="Save Plan">Save</button>
+        <button id="btn-load" title="Load Plan">Load</button>
+        <span class="sep"></span>
+        <button id="btn-import-py" title="Import Python Script">Import .py</button>
+      </div>
+      <div class="toolbar-center">
+        <h1 id="plan-name">Untitled Flight Plan</h1>
+      </div>
+      <div class="toolbar-right">
+        <button id="btn-export-py" title="Export CoDrone Python Script">Export Swarm</button>
+        <button id="btn-export-single" title="Export Single Drone Script">Export Single</button>
+        <button id="btn-export-anim" title="Export Python Animation Script">Export Animation</button>
+      </div>
+    </header>
+
+    <div id="drone-bar">
+      <div id="drone-tabs"></div>
+      <div id="drone-actions">
+        <button id="btn-add-drone" title="Add Drone">+</button>
+        <button id="btn-dup-drone" title="Duplicate Drone">&#x2398;</button>
+        <button id="btn-rm-drone" title="Remove Drone">&#x2715;</button>
+        <span class="drone-sep"></span>
+        <select id="formation-select" title="Formation">
+          <option value="">Formation</option>
+          <option value="line">Line</option>
+          <option value="grid">Grid</option>
+          <option value="circle">Circle</option>
+          <option value="v">V-Formation</option>
+          <option value="column">Column</option>
+          <option value="arc">Arc</option>
+        </select>
+      </div>
+    </div>
+
+    <main id="workspace">
+      <div id="left-panel">
+        <div id="mode-toggle">
+          <h3>Edit Mode</h3>
+          <button class="mode-btn active" data-mode="commands" title="Command List">
+            <span class="mode-icon">&#x2630;</span> Commands
+          </button>
+          <button class="mode-btn" data-mode="waypoint" title="Waypoint Mode">
+            <span class="mode-icon">&#x25C9;</span> Waypoints
+          </button>
+          <button class="mode-btn" data-mode="freehand" title="Freehand Path">
+            <span class="mode-icon">&#x270E;</span> Freehand
+          </button>
+        </div>
+
+        <div id="command-palette">
+          <h3>Add Command</h3>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Flight</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-flight" data-cmd="takeoff">Takeoff</button>
+              <button class="cmd-btn cat-flight" data-cmd="land">Land</button>
+              <button class="cmd-btn cat-flight" data-cmd="hover">Hover</button>
+              <button class="cmd-btn cat-flight" data-cmd="flip">Flip</button>
+              <button class="cmd-btn cat-flight" data-cmd="go">Go</button>
+              <button class="cmd-btn cat-flight" data-cmd="move_forward">Forward</button>
+              <button class="cmd-btn cat-flight" data-cmd="move_backward">Back</button>
+              <button class="cmd-btn cat-flight" data-cmd="move_left">Left</button>
+              <button class="cmd-btn cat-flight" data-cmd="move_right">Right</button>
+              <button class="cmd-btn cat-flight" data-cmd="turn_left">Turn L</button>
+              <button class="cmd-btn cat-flight" data-cmd="turn_right">Turn R</button>
+              <button class="cmd-btn cat-flight" data-cmd="circle">Circle</button>
+              <button class="cmd-btn cat-flight" data-cmd="square">Square</button>
+              <button class="cmd-btn cat-flight" data-cmd="triangle">Triangle</button>
+            </div>
+          </div>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Control Flow</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-control" data-cmd="if_block">If</button>
+              <button class="cmd-btn cat-control" data-cmd="elif_block">Elif</button>
+              <button class="cmd-btn cat-control" data-cmd="else_block">Else</button>
+              <button class="cmd-btn cat-control" data-cmd="end_block">End</button>
+              <button class="cmd-btn cat-control" data-cmd="while_block">While</button>
+              <button class="cmd-btn cat-control" data-cmd="for_block">For Loop</button>
+              <button class="cmd-btn cat-control" data-cmd="break_cmd">Break</button>
+            </div>
+          </div>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Output</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-output" data-cmd="led">LED</button>
+              <button class="cmd-btn cat-output" data-cmd="buzzer">Buzzer</button>
+              <button class="cmd-btn cat-output" data-cmd="random_led">Random LED</button>
+              <button class="cmd-btn cat-output" data-cmd="time_sleep">Sleep</button>
+            </div>
+          </div>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Variables</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-var" data-cmd="var_declare">Var</button>
+              <button class="cmd-btn cat-var" data-cmd="set_var">Set</button>
+              <button class="cmd-btn cat-var" data-cmd="print_var">Print</button>
+              <button class="cmd-btn cat-var" data-cmd="user_input">Input</button>
+            </div>
+          </div>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Sensors</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-sensor" data-cmd="get_distance">Distance</button>
+              <button class="cmd-btn cat-sensor" data-cmd="get_height">Height</button>
+              <button class="cmd-btn cat-sensor" data-cmd="get_color">Color</button>
+              <button class="cmd-btn cat-sensor" data-cmd="get_battery">Battery</button>
+              <button class="cmd-btn cat-sensor" data-cmd="get_temperature">Temp</button>
+            </div>
+          </div>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Functions & Lists</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-func" data-cmd="func_def">Define</button>
+              <button class="cmd-btn cat-func" data-cmd="func_call">Call</button>
+              <button class="cmd-btn cat-func" data-cmd="list_declare">New List</button>
+              <button class="cmd-btn cat-func" data-cmd="list_append">Append</button>
+              <button class="cmd-btn cat-func" data-cmd="list_get">Get Index</button>
+            </div>
+          </div>
+          <div class="cmd-section">
+            <div class="cmd-section-label">Timer</div>
+            <div class="cmd-grid">
+              <button class="cmd-btn cat-timer" data-cmd="timer_start">Start</button>
+              <button class="cmd-btn cat-timer" data-cmd="timer_elapsed">Elapsed</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="cmd-options">
+          <h3>Command Options</h3>
+          <div id="dynamic-options"></div>
+        </div>
+
+        <div id="command-list-panel">
+          <h3>Flight Commands</h3>
+          <div id="command-list"></div>
+        </div>
+      </div>
+
+      <div id="center-panel">
+        <div id="scene-container">
+          <canvas id="scene-canvas"></canvas>
+        </div>
+        <div id="scene-overlay">
+          <div id="playback-bar">
+            <button id="btn-play" title="Play">&#x25B6;</button>
+            <button id="btn-stop" title="Stop">&#x23F9;</button>
+            <button id="btn-reset" title="Reset">&#x23EA;</button>
+            <input id="playback-speed" type="range" min="0.1" max="3" value="1" step="0.1" />
+            <span id="speed-label">1.0x</span>
+          </div>
+          <div id="position-readout">
+            <span id="readout-pos">X: 0.00 Y: 0.00 Z: 0.00</span>
+            <span id="readout-heading">HDG: 0&deg;</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="right-panel">
+        <div id="code-preview">
+          <h3>Generated Code</h3>
+          <pre id="code-output"></pre>
+          <button id="btn-copy-code" title="Copy to clipboard">Copy</button>
+        </div>
+      </div>
+    </main>
+
+    <footer id="console-panel">
+      <div id="console-header">
+        <h3>Console</h3>
+        <button id="btn-clear-console" title="Clear">Clear</button>
+      </div>
+      <div id="console-output"></div>
+    </footer>
+  </div>
+
+  <input type="file" id="file-input" accept=".flight,.json" style="display:none;" />
+  <input type="file" id="py-input" accept=".py" style="display:none;" />
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
