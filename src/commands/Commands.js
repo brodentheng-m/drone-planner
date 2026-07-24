@@ -4,7 +4,7 @@ export const COMMAND_DEFS = {
   hover:          { label: 'Hover',           params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1 }], code: (p) => `drone.hover(${p.dur})` },
   flip:           { label: 'Flip',            params: [{ key: 'dir', label: 'Dir', type: 'select', options: ['forward','back','left','right'], default: 'back' }], code: (p) => `drone.flip("${p.dir}")` },
   go:             { label: 'Go',              params: [
-    { key: 'dir', label: 'Dir', type: 'select', options: ['forward','backward','left','right'], default: 'forward' },
+    { key: 'dir', label: 'Dir', type: 'select', options: ['forward','backward','left','right','up','down'], default: 'forward' },
     { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 },
     { key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 }
   ], code: (p) => `drone.go("${p.dir}", ${p.power}, ${p.dur})` },
@@ -24,6 +24,14 @@ export const COMMAND_DEFS = {
     { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
     { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
   ], code: (p) => `drone.move_right(${p.dist}, ${p.power})` },
+  move_up:        { label: 'Up',              params: [
+    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
+    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
+  ], code: (p) => `drone.move_up(${p.dist}, ${p.power})` },
+  move_down:      { label: 'Down',            params: [
+    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
+    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
+  ], code: (p) => `drone.move_down(${p.dist}, ${p.power})` },
   turn_left:      { label: 'Turn Left',       params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_left(${p.deg})` },
   turn_right:     { label: 'Turn Right',      params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_right(${p.deg})` },
   circle:         { label: 'Circle',          params: [

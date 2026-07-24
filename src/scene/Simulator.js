@@ -110,7 +110,9 @@ function processCommands(commands, vars, state, maxIter = 500) {
         if (dir === 'forward') { dx = Math.cos(hr); dy = Math.sin(hr); pitch = -MAX_PITCH * pf; }
         else if (dir === 'backward') { dx = -Math.cos(hr); dy = -Math.sin(hr); pitch = MAX_PITCH * pf; }
         else if (dir === 'left') { dx = Math.sin(hr); dy = -Math.cos(hr); roll = -MAX_ROLL * pf; }
-        else { dx = -Math.sin(hr); dy = Math.cos(hr); roll = MAX_ROLL * pf; }
+        else if (dir === 'right') { dx = -Math.sin(hr); dy = Math.cos(hr); roll = MAX_ROLL * pf; }
+        else if (dir === 'up') { state.z += speed * dur; }
+        else if (dir === 'down') { state.z -= speed * dur; }
         for (let i = 0; i < steps; i++) {
           const t = (i + 1) / steps;
           let ease = 1;
@@ -165,6 +167,24 @@ function processCommands(commands, vars, state, maxIter = 500) {
         }
         if (cmd.type === 'move_left') { state.x += Math.sin(hr) * dist; state.y -= Math.cos(hr) * dist; }
         else { state.x -= Math.sin(hr) * dist; state.y += Math.cos(hr) * dist; }
+        dur = steps * DT;
+        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+        break;
+      }
+      case 'move_up':
+      case 'move_down': {
+        const dist = (parseFloat(p.dist) || 50) / 100;
+        const power = parseFloat(p.power) || 50;
+        const sign = cmd.type === 'move_up' ? 1 : -1;
+        const pf = power / 100;
+        const speed = pf * DEFAULT_SPEED * 2;
+        const steps = Math.max(Math.ceil(dist / (speed * DT)), 5);
+        for (let i = 0; i < steps; i++) {
+          const t = (i + 1) / steps;
+          const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
+          state.positions.push({ x: state.x, y: state.y, z: state.z + sign * dist * t, heading: state.heading, pitch: 0, roll: 0 });
+        }
+        state.z += sign * dist;
         dur = steps * DT;
         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
         break;
