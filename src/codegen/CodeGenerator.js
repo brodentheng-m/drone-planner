@@ -282,102 +282,160 @@ function generateSimBlock(commands, lines, indent) {
         lines.push(`${pad}y += dy * speed * ${dur}`);
         break;
       }
-      case 'move_forward':
-      case 'move_backward': {
-        const sign = cmd.type === 'move_forward' ? '' : '-';
-        const dist = p.dist || 50;
-        const power = p.power || 50;
-        lines.push(`${pad}# ${cmd.type === 'move_forward' ? 'Forward' : 'Backward'} ${dist}cm power=${power}`);
-        lines.push(`${pad}dist_m = ${dist} / 100.0`);
-        lines.push(`${pad}rad = math.radians(heading)`);
-        lines.push(`${pad}steps = max(int(dist_m / (DEFAULT_SPEED * DT)), 5)`);
-        lines.push(`${pad}for i in range(steps):`);
-        lines.push(`${pad}    t = (i + 1) / steps`);
-        lines.push(`${pad}    px = x ${sign} math.cos(rad) * dist_m * t`);
-        lines.push(`${pad}    py = y ${sign} math.sin(rad) * dist_m * t`);
-        lines.push(`${pad}    positions.append((px, py, z))`);
-        lines.push(`${pad}x ${sign}= math.cos(rad) * dist_m`);
-        lines.push(`${pad}y ${sign}= math.sin(rad) * dist_m`);
-        break;
-      }
-      case 'move_left':
-      case 'move_right': {
-        const sign = cmd.type === 'move_left' ? '-' : '+';
-        const dist = p.dist || 50;
-        const power = p.power || 50;
-        lines.push(`${pad}# ${cmd.type === 'move_left' ? 'Left' : 'Right'} ${dist}cm power=${power}`);
-        lines.push(`${pad}dist_m = ${dist} / 100.0`);
-        lines.push(`${pad}rad = math.radians(heading)`);
-        lines.push(`${pad}steps = max(int(dist_m / (DEFAULT_SPEED * DT)), 5)`);
-        lines.push(`${pad}for i in range(steps):`);
-        lines.push(`${pad}    t = (i + 1) / steps`);
-        if (cmd.type === 'move_left') {
-          lines.push(`${pad}    px = x - math.sin(rad) * dist_m * t`);
-          lines.push(`${pad}    py = y + math.cos(rad) * dist_m * t`);
-        } else {
-          lines.push(`${pad}    px = x + math.sin(rad) * dist_m * t`);
-          lines.push(`${pad}    py = y - math.cos(rad) * dist_m * t`);
-        }
-        lines.push(`${pad}    positions.append((px, py, z))`);
-        if (cmd.type === 'move_left') {
-          lines.push(`${pad}x -= math.sin(rad) * dist_m`);
-          lines.push(`${pad}y += math.cos(rad) * dist_m`);
-        } else {
-          lines.push(`${pad}x += math.sin(rad) * dist_m`);
-          lines.push(`${pad}y -= math.cos(rad) * dist_m`);
-        }
-        break;
-      }
-      case 'turn_left':
-      case 'turn_right': {
-        const sign = cmd.type === 'turn_left' ? '+' : '-';
-        const deg = p.deg || 90;
-        lines.push(`${pad}# Turn ${cmd.type === 'turn_left' ? 'Left' : 'Right'} ${deg}deg`);
-        lines.push(`${pad}heading ${sign}= ${deg}`);
-        lines.push(`${pad}positions.append((x, y, z))`);
-        break;
-      }
-      case 'circle':
-        lines.push(`${pad}# Circle`);
-        lines.push(`${pad}for i in range(60):`);
-        lines.push(`${pad}    angle = 2 * math.pi * i / 60`);
-        lines.push(`${pad}    fx = x + 0.6 * math.cos(angle)`);
-        lines.push(`${pad}    fy = y + 0.6 * math.sin(angle)`);
-        lines.push(`${pad}    positions.append((fx, fy, z))`);
-        lines.push(`${pad}x += 0.6`);
-        lines.push(`${pad}positions.append((x, y, z))`);
-        break;
-      case 'square':
-        lines.push(`${pad}# Square`);
-        lines.push(`${pad}rad = math.radians(heading)`);
-        lines.push(`${pad}for dx, dy in [(math.cos(rad), math.sin(rad)), (-math.sin(rad), math.cos(rad)), (-math.cos(rad), -math.sin(rad)), (math.sin(rad), -math.cos(rad))]:`);
-        lines.push(`${pad}    for j in range(15):`);
-        lines.push(`${pad}        t = (j + 1) / 15`);
-        lines.push(`${pad}        px = x + dx * 0.6 * t`);
-        lines.push(`${pad}        py = y + dy * 0.6 * t`);
-        lines.push(`${pad}        positions.append((px, py, z))`);
-        lines.push(`${pad}    x += dx * 0.6`);
-        lines.push(`${pad}    y += dy * 0.6`);
-        lines.push(`${pad}positions.append((x, y, z))`);
-        break;
-      case 'triangle':
-        lines.push(`${pad}# Triangle`);
-        lines.push(`${pad}rad = math.radians(heading)`);
-        lines.push(`${pad}for i in range(3):`);
-        lines.push(`${pad}    angle = rad + i * (2 * math.pi / 3)`);
-        lines.push(`${pad}    for j in range(15):`);
-        lines.push(`${pad}        t = (j + 1) / 15`);
-        lines.push(`${pad}        px = x + math.cos(angle) * 0.6 * t`);
-        lines.push(`${pad}        py = y + math.sin(angle) * 0.6 * t`);
-        lines.push(`${pad}        positions.append((px, py, z))`);
-        lines.push(`${pad}    x += math.cos(angle) * 0.6`);
-        lines.push(`${pad}    y += math.sin(angle) * 0.6`);
-        lines.push(`${pad}positions.append((x, y, z))`);
-        break;
+       case 'move_forward':
+       case 'move_backward': {
+         const sign = cmd.type === 'move_forward' ? '' : '-';
+         const dist = p.dist || 50;
+         const speed = p.speed || 50;
+         lines.push(`${pad}# ${cmd.type === 'move_forward' ? 'Forward' : 'Backward'} ${dist}cm speed=${speed}`);
+         lines.push(`${pad}dist_m = ${dist} / 100.0`);
+         lines.push(`${pad}rad = math.radians(heading)`);
+         lines.push(`${pad}steps = max(int(dist_m / (DEFAULT_SPEED * DT)), 5)`);
+         lines.push(`${pad}for i in range(steps):`);
+         lines.push(`${pad}    t = (i + 1) / steps`);
+         lines.push(`${pad}    px = x ${sign} math.cos(rad) * dist_m * t`);
+         lines.push(`${pad}    py = y ${sign} math.sin(rad) * dist_m * t`);
+         lines.push(`${pad}    positions.append((px, py, z))`);
+         lines.push(`${pad}x ${sign}= math.cos(rad) * dist_m`);
+         lines.push(`${pad}y ${sign}= math.sin(rad) * dist_m`);
+         break;
+       }
+       case 'move_left':
+       case 'move_right': {
+         const sign = cmd.type === 'move_left' ? '-' : '+';
+         const dist = p.dist || 50;
+         const speed = p.speed || 50;
+         lines.push(`${pad}# ${cmd.type === 'move_left' ? 'Left' : 'Right'} ${dist}cm speed=${speed}`);
+         lines.push(`${pad}dist_m = ${dist} / 100.0`);
+         lines.push(`${pad}rad = math.radians(heading)`);
+         lines.push(`${pad}steps = max(int(dist_m / (DEFAULT_SPEED * DT)), 5)`);
+         lines.push(`${pad}for i in range(steps):`);
+         lines.push(`${pad}    t = (i + 1) / steps`);
+         if (cmd.type === 'move_left') {
+           lines.push(`${pad}    px = x - math.sin(rad) * dist_m * t`);
+           lines.push(`${pad}    py = y + math.cos(rad) * dist_m * t`);
+         } else {
+           lines.push(`${pad}    px = x + math.sin(rad) * dist_m * t`);
+           lines.push(`${pad}    py = y - math.cos(rad) * dist_m * t`);
+         }
+         lines.push(`${pad}    positions.append((px, py, z))`);
+         if (cmd.type === 'move_left') {
+           lines.push(`${pad}x -= math.sin(rad) * dist_m`);
+           lines.push(`${pad}y += math.cos(rad) * dist_m`);
+         } else {
+           lines.push(`${pad}x += math.sin(rad) * dist_m`);
+           lines.push(`${pad}y -= math.cos(rad) * dist_m`);
+         }
+         break;
+       }
+       case 'turn_left':
+       case 'turn_right': {
+         const sign = cmd.type === 'turn_left' ? '+' : '-';
+         const deg = p.deg || 90;
+         lines.push(`${pad}# Turn ${cmd.type === 'turn_left' ? 'Left' : 'Right'} ${deg}deg`);
+         lines.push(`${pad}heading ${sign}= ${deg}`);
+         lines.push(`${pad}positions.append((x, y, z))`);
+         break;
+       }
+       case 'turn_degree': {
+         const deg = p.deg || 90;
+         const timeout = p.timeout || 3;
+         lines.push(`${pad}# Turn ${deg}deg timeout=${timeout}`);
+         lines.push(`${pad}heading += ${deg}`);
+         lines.push(`${pad}positions.append((x, y, z))`);
+         break;
+       }
+       case 'circle':
+       case 'circle_turn': {
+         const speed = p.speed || 75;
+         const direction = p.dir === 'counter-clockwise' ? -1 : 1;
+         lines.push(`${pad}# Circle speed=${speed} direction=${direction}`);
+         lines.push(`${pad}for i in range(60):`);
+         lines.push(`${pad}    angle = 2 * math.pi * i / 60 * ${direction}`);
+         lines.push(`${pad}    fx = x + 0.5 * math.cos(angle)`);
+         lines.push(`${pad}    fy = y + 0.5 * math.sin(angle)`);
+         lines.push(`${pad}    positions.append((fx, fy, z))`);
+         lines.push(`${pad}x += 0.5 * ${direction}`);
+         lines.push(`${pad}positions.append((x, y, z))`);
+         break;
+       }
+       case 'square':
+       case 'square_turn':
+       case 'triangle':
+       case 'triangle_turn': {
+         const speed = p.speed || 60;
+         const secs = p.secs || 1;
+         const direction = p.dir === 'counter-clockwise' ? -1 : 1;
+         const isTriangle = cmd.type.includes('triangle');
+         const numSides = isTriangle ? 3 : 4;
+         lines.push(`${pad}# ${isTriangle ? 'Triangle' : 'Square'} speed=${speed} secs=${secs} direction=${direction}`);
+         lines.push(`${pad}rad = math.radians(heading)`);
+         lines.push(`${pad}for i in range(${numSides}):`);
+         lines.push(`${pad}    angle = rad + i * (2 * math.pi / ${numSides}) * ${direction}`);
+         lines.push(`${pad}    for j in range(15):`);
+         lines.push(`${pad}        t = (j + 1) / 15`);
+         lines.push(`${pad}        px = x + math.cos(angle) * 0.5 * t`);
+         lines.push(`${pad}        py = y + math.sin(angle) * 0.5 * t`);
+         lines.push(`${pad}        positions.append((px, py, z))`);
+         lines.push(`${pad}    x += math.cos(angle) * 0.5`);
+         lines.push(`${pad}    y += math.sin(angle) * 0.5`);
+         lines.push(`${pad}positions.append((x, y, z))`);
+         break;
+       }
+       case 'spiral': {
+         const speed = p.speed || 50;
+         const direction = p.dir === 'counter-clockwise' ? -1 : 1;
+         lines.push(`${pad}# Spiral speed=${speed} direction=${direction}`);
+         lines.push(`${pad}for i in range(120):`);
+         lines.push(`${pad}    t = i / 120`);
+         lines.push(`${pad}    angle = 4 * math.pi * t * ${direction}`);
+         lines.push(`${pad}    radius = t * 0.5`);
+         lines.push(`${pad}    fx = x + radius * math.cos(angle)`);
+         lines.push(`${pad}    fy = y + radius * math.sin(angle)`);
+         lines.push(`${pad}    fz = z + t * 0.3`);
+         lines.push(`${pad}    positions.append((fx, fy, fz))`);
+         lines.push(`${pad}x += 0.5 * math.cos(4 * math.pi * ${direction})`);
+         lines.push(`${pad}y += 0.5 * math.sin(4 * math.pi * ${direction})`);
+         lines.push(`${pad}z += 0.3`);
+         lines.push(`${pad}positions.append((x, y, z))`);
+         break;
+       }
+       case 'sway': {
+         const speed = p.speed || 50;
+         const dir = p.dir || 'forward-back';
+         lines.push(`${pad}# Sway speed=${speed} dir=${dir}`);
+         lines.push(`${pad}for i in range(40):`);
+         lines.push(`${pad}    t = i / 40`);
+         lines.push(`${pad}    angle = 2 * math.pi * t`);
+         lines.push(`${pad}    positions.append((x, y, z))`);
+         break;
+       }
+       case 'keep_distance':
+       case 'avoid_wall': {
+         const dist = p.dist || 50;
+         const speed = p.speed || 50;
+         lines.push(`${pad}# ${cmd.type === 'keep_distance' ? 'Keep Distance' : 'Avoid Wall'} ${dist}cm speed=${speed}`);
+         lines.push(`${pad}rad = math.radians(heading)`);
+         lines.push(`${pad}dist_m = ${dist} / 100.0`);
+         lines.push(`${pad}steps = max(int(dist_m / (DEFAULT_SPEED * DT)), 5)`);
+         lines.push(`${pad}for i in range(steps):`);
+         lines.push(`${pad}    t = (i + 1) / steps`);
+         lines.push(`${pad}    px = x - math.cos(rad) * dist_m * t`);
+         lines.push(`${pad}    py = y - math.sin(rad) * dist_m * t`);
+         lines.push(`${pad}    positions.append((px, py, z))`);
+         lines.push(`${pad}x -= math.cos(rad) * dist_m`);
+         lines.push(`${pad}y -= math.sin(rad) * dist_m`);
+         break;
+       }
+       case 'detect_wall': {
+         lines.push(`${pad}# Detect Wall`);
+         lines.push(`${pad}${p.var} = 0`);
+         break;
+       }
 
-      case 'led': lines.push(`${pad}# LED ${p.color}`); break;
-      case 'buzzer': lines.push(`${pad}# Buzzer ${p.freq}Hz ${p.dur}s`); break;
-      case 'random_led': lines.push(`${pad}# Random LED`); break;
+       case 'led': lines.push(`${pad}# LED r=${p.r} g=${p.g} b=${p.b} brightness=${p.brightness}`); break;
+       case 'led_off': lines.push(`${pad}# LED Off`); break;
+       case 'buzzer': lines.push(`${pad}# Buzzer note=${p.note} dur=${p.dur}ms`); break;
 
       case 'var_declare': lines.push(`${pad}${p.name} = ${p.value}`); break;
       case 'set_var': lines.push(`${pad}${p.name} ${p.op} ${p.value}`); break;
@@ -411,11 +469,14 @@ function generateSimBlock(commands, lines, indent) {
         break;
       case 'break_cmd': lines.push(`${pad}break`); break;
 
-      case 'get_distance': lines.push(`${pad}${p.var} = 100`); break;
-      case 'get_height': lines.push(`${pad}${p.var} = z`); break;
-      case 'get_color': lines.push(`${pad}${p.var} = "green"`); break;
-      case 'get_battery': lines.push(`${pad}${p.var} = 80`); break;
-      case 'get_temperature': lines.push(`${pad}${p.var} = 22.0`); break;
+       case 'get_battery': lines.push(`${pad}${p.var} = 80`); break;
+       case 'get_height': lines.push(`${pad}${p.var} = z * 100`); break;
+       case 'get_front_range': lines.push(`${pad}${p.var} = 100`); break;
+       case 'get_bottom_range': lines.push(`${pad}${p.var} = z * 100`); break;
+       case 'get_front_color': lines.push(`${pad}${p.var} = "green"`); break;
+       case 'get_back_color': lines.push(`${pad}${p.var} = "blue"`); break;
+       case 'get_temperature': lines.push(`${pad}${p.var} = 22.0`); break;
+       case 'detect_wall': lines.push(`${pad}${p.var} = 0`); break;
 
       case 'func_def':
         lines.push(`${pad}def ${p.name}():`);

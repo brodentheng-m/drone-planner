@@ -1,61 +1,93 @@
 export const COMMAND_DEFS = {
   takeoff:        { label: 'Takeoff',        params: [],                                     code: 'drone.takeoff()' },
   land:           { label: 'Land',            params: [],                                     code: 'drone.land()' },
-  hover:          { label: 'Hover',           params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1 }], code: (p) => `drone.hover(${p.dur})` },
+  emergency_stop: { label: 'Emergency Stop', params: [],                                     code: 'drone.emergency_stop()' },
+  stop_motors:    { label: 'Stop Motors',     params: [],                                     code: 'drone.stop_motors()' },
+  hover:          { label: 'Hover',           params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.01, max: 10 }], code: (p) => `drone.hover(${p.dur})` },
   flip:           { label: 'Flip',            params: [{ key: 'dir', label: 'Dir', type: 'select', options: ['forward','back','left','right'], default: 'back' }], code: (p) => `drone.flip("${p.dir}")` },
   go:             { label: 'Go',              params: [
     { key: 'dir', label: 'Dir', type: 'select', options: ['forward','backward','left','right'], default: 'forward' },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 },
+    { key: 'power', label: 'Power %', type: 'number', default: 50, min: 0, max: 100 },
     { key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 }
   ], code: (p) => `drone.go("${p.dir}", ${p.power}, ${p.dur})` },
   move_forward:   { label: 'Forward',        params: [
     { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => `drone.move_forward(${p.dist}, ${p.power})` },
+    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
+  ], code: (p) => `drone.move_forward(${p.dist}, speed=${p.speed})` },
   move_backward:  { label: 'Back',            params: [
     { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => `drone.move_backward(${p.dist}, ${p.power})` },
+    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
+  ], code: (p) => `drone.move_backward(${p.dist}, speed=${p.speed})` },
   move_left:      { label: 'Left',            params: [
     { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => `drone.move_left(${p.dist}, ${p.power})` },
+    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
+  ], code: (p) => `drone.move_left(${p.dist}, speed=${p.speed})` },
   move_right:     { label: 'Right',           params: [
     { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => `drone.move_right(${p.dist}, ${p.power})` },
-  move_up:        { label: 'Up',              params: [
-    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => `drone.move_up(${p.dist}, ${p.power})` },
-  move_down:      { label: 'Down',            params: [
-    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => `drone.move_down(${p.dist}, ${p.power})` },
+    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
+  ], code: (p) => `drone.move_right(${p.dist}, speed=${p.speed})` },
   turn_left:      { label: 'Turn Left',       params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_left(${p.deg})` },
   turn_right:     { label: 'Turn Right',      params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_right(${p.deg})` },
+  turn_degree:    { label: 'Turn',            params: [
+    { key: 'deg', label: 'Deg', type: 'number', default: 90, min: -360, max: 360 },
+    { key: 'timeout', label: 'Timeout', type: 'number', default: 3, min: 0.1, max: 30 },
+    { key: 'p_value', label: 'P Value', type: 'number', default: 10, min: 0, max: 100 }
+  ], code: (p) => `drone.turn_degree(${p.deg}, timeout=${p.timeout}, p_value=${p.p_value})` },
   circle:         { label: 'Circle',          params: [
-    { key: 'radius', label: 'Radius cm', type: 'number', default: 50, min: 20, max: 200 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 10, max: 100 }
-  ], code: (p) => `drone.circle()` },
+    { key: 'speed', label: 'Speed %', type: 'number', default: 75, min: 10, max: 100 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
+  ], code: (p) => `drone.circle(speed=${p.speed}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
+  circle_turn:    { label: 'Circle Turn',     params: [
+    { key: 'speed', label: 'Speed %', type: 'number', default: 75, min: 10, max: 100 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
+  ], code: (p) => `drone.circle_turn(speed=${p.speed}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
   square:         { label: 'Square',          params: [
-    { key: 'size', label: 'Size cm', type: 'number', default: 50, min: 20, max: 200 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 10, max: 100 }
-  ], code: (p) => `drone.square()` },
+    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
+    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
+  ], code: (p) => `drone.square(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
   triangle:       { label: 'Triangle',        params: [
-    { key: 'size', label: 'Size cm', type: 'number', default: 50, min: 20, max: 200 },
-    { key: 'power', label: 'Power', type: 'number', default: 50, min: 10, max: 100 }
-  ], code: (p) => `drone.triangle()` },
+    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
+    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
+  ], code: (p) => `drone.triangle(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
+  triangle_turn:  { label: 'Triangle Turn',   params: [
+    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
+    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
+  ], code: (p) => `drone.triangle_turn(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
+  spiral:         { label: 'Spiral',          params: [
+    { key: 'speed', label: 'Speed %', type: 'number', default: 50, min: 10, max: 100 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
+  ], code: (p) => `drone.spiral(speed=${p.speed}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
+  sway:            { label: 'Sway',             params: [
+    { key: 'speed', label: 'Speed %', type: 'number', default: 50, min: 10, max: 100 },
+    { key: 'dir', label: 'Direction', type: 'select', options: ['forward-back', 'left-right', 'up-down', 'turn-left', 'turn-right', 'pitch-forward', 'pitch-backward', 'roll-left', 'roll-right'], default: 'forward-back' }
+  ], code: (p) => `drone.sway(speed=${p.speed}, direction="${p.dir}")` },
+  keep_distance:  { label: 'Keep Distance',    params: [
+    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
+    { key: 'speed', label: 'Speed %', type: 'number', default: 50, min: 10, max: 100 }
+  ], code: (p) => `drone.keep_distance(${p.dist}, ${p.speed})` },
+  avoid_wall:     { label: 'Avoid Wall',      params: [
+    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
+    { key: 'speed', label: 'Speed %', type: 'number', default: 50, min: 10, max: 100 }
+  ], code: (p) => `drone.avoid_wall(${p.dist}, ${p.speed})` },
+  detect_wall:    { label: 'Detect Wall',      params: [
+    { key: 'var', label: 'Store in', type: 'text', default: 'detected' }
+  ], code: (p) => `${p.var} = drone.detect_wall()` },
 
   led:            { label: 'LED',             params: [
-    { key: 'color', label: 'Color', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','purple','orange','pink','off'], default: 'green' }
-  ], code: (p) => `drone.set_led("${p.color}")` },
+    { key: 'r', label: 'Red', type: 'number', default: 0, min: 0, max: 255 },
+    { key: 'g', label: 'Green', type: 'number', default: 255, min: 0, max: 255 },
+    { key: 'b', label: 'Blue', type: 'number', default: 0, min: 0, max: 255 },
+    { key: 'brightness', label: 'Brightness', type: 'number', default: 100, min: 0, max: 255 }
+  ], code: (p) => `drone.set_drone_LED(${p.r}, ${p.g}, ${p.b}, ${p.brightness})` },
+  led_off:        { label: 'LED Off',         params: [],                                     code: 'drone.drone_LED_off()' },
   buzzer:         { label: 'Buzzer',          params: [
-    { key: 'freq', label: 'Hz', type: 'number', default: 440, min: 100, max: 5000 },
-    { key: 'dur', label: 'Secs', type: 'number', default: 0.5, min: 0.1, max: 5, step: 0.1 }
-  ], code: (p) => `drone.set_buzzer(${p.freq}, ${p.dur})` },
-  random_led:     { label: 'Random LED',      params: [],                                     code: 'drone.random_color()' },
-  drone_sleep:    { label: 'Drone Sleep',     params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10, step: 0.1 }], code: (p) => `time.sleep(${p.dur})` },
+    { key: 'note', label: 'Note', type: 'select', options: ['C4','D4','E4','F4','G4','A4','B4','C5','Mute'], default: 'C4' },
+    { key: 'dur', label: 'ms', type: 'number', default: 500, min: 100, max: 5000 }
+  ], code: (p) => `drone.drone_buzzer(drone.Note.${p.note}, ${p.dur})` },
+  drone_sleep:    { label: 'Sleep',           params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10, step: 0.1 }], code: (p) => `time.sleep(${p.dur})` },
 
   var_declare:    { label: 'Var',             params: [
     { key: 'name', label: 'Name', type: 'text', default: 'x' },
@@ -90,21 +122,33 @@ export const COMMAND_DEFS = {
   ], isBlock: true },
   break_cmd:      { label: 'Break',           params: [], code: 'break' },
 
-  get_distance:   { label: 'Distance',        params: [
-    { key: 'var', label: 'Store in', type: 'text', default: 'dist' }
-  ], code: (p) => `${p.var} = drone.get_distance()` },
-  get_height:     { label: 'Height',          params: [
-    { key: 'var', label: 'Store in', type: 'text', default: 'height' }
-  ], code: (p) => `${p.var} = drone.get_height()` },
-  get_color:      { label: 'Color Sensor',    params: [
-    { key: 'var', label: 'Store in', type: 'text', default: 'color' }
-  ], code: (p) => `${p.var} = drone.get_color()` },
   get_battery:    { label: 'Battery',         params: [
     { key: 'var', label: 'Store in', type: 'text', default: 'battery' }
   ], code: (p) => `${p.var} = drone.get_battery()` },
+  get_height:     { label: 'Height',          params: [
+    { key: 'var', label: 'Store in', type: 'text', default: 'height' },
+    { key: 'unit', label: 'Unit', type: 'select', options: ['cm', 'm', 'ft', 'in'], default: 'cm' }
+  ], code: (p) => `${p.var} = drone.get_height(unit="${p.unit}")` },
+  get_front_range: { label: 'Front Range',     params: [
+    { key: 'var', label: 'Store in', type: 'text', default: 'dist' },
+    { key: 'unit', label: 'Unit', type: 'select', options: ['cm', 'm', 'ft', 'in'], default: 'cm' }
+  ], code: (p) => `${p.var} = drone.get_front_range(unit="${p.unit}")` },
+  get_bottom_range:{ label: 'Bottom Range',    params: [
+    { key: 'var', label: 'Store in', type: 'text', default: 'dist' },
+    { key: 'unit', label: 'Unit', type: 'select', options: ['cm', 'm', 'ft', 'in'], default: 'cm' }
+  ], code: (p) => `${p.var} = drone.get_bottom_range(unit="${p.unit}")` },
+  get_front_color: { label: 'Front Color',     params: [
+    { key: 'var', label: 'Store in', type: 'text', default: 'color' },
+    { key: 'kind', label: 'Kind', type: 'select', options: ['name', 'rgb', 'index'], default: 'name' }
+  ], code: (p) => `${p.var} = drone.get_front_color(kind="${p.kind}")` },
+  get_back_color:  { label: 'Back Color',      params: [
+    { key: 'var', label: 'Store in', type: 'text', default: 'color' },
+    { key: 'kind', label: 'Kind', type: 'select', options: ['name', 'rgb', 'index'], default: 'name' }
+  ], code: (p) => `${p.var} = drone.get_back_color(kind="${p.kind}")` },
   get_temperature:{ label: 'Temperature',     params: [
-    { key: 'var', label: 'Store in', type: 'text', default: 'temp' }
-  ], code: (p) => `${p.var} = drone.get_temperature()` },
+    { key: 'var', label: 'Store in', type: 'text', default: 'temp' },
+    { key: 'unit', label: 'Unit', type: 'select', options: ['C', 'F'], default: 'C' }
+  ], code: (p) => `${p.var} = drone.get_temperature(unit="${p.unit}")` },
 
   func_def:       { label: 'Define Func',     params: [
     { key: 'name', label: 'Name', type: 'text', default: 'my_func' }
@@ -141,11 +185,7 @@ export const COMMAND_DEFS = {
   timer_elapsed:  { label: 'Get Elapsed',     params: [
     { key: 'name', label: 'Timer', type: 'text', default: 't' },
     { key: 'var', label: 'Store in', type: 'text', default: 'elapsed' }
-  ], code: (p) => `${p.var} = time.time() - ${p.name}` },
-
-  time_sleep:     { label: 'Sleep',           params: [
-    { key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 30, step: 0.1 }
-  ], code: (p) => `time.sleep(${p.dur})` }
+  ], code: (p) => `${p.var} = time.time() - ${p.name}` }
 };
 
 export function createCommand(type) {

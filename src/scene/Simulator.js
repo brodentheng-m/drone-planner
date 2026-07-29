@@ -125,157 +125,207 @@ function processCommands(commands, vars, state, maxIter = 500) {
         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
         break;
       }
-      case 'move_forward':
-      case 'move_backward': {
-        const dist = (parseFloat(p.dist) || 50) / 100;
-        const power = parseFloat(p.power) || 50;
-        const sign = cmd.type === 'move_forward' ? 1 : -1;
-        const pf = power / 100;
-        const speed = pf * DEFAULT_SPEED * 2;
-        const steps = Math.max(Math.ceil(dist / (speed * DT)), 5);
-        const hr = state.heading * Math.PI / 180;
-        const pitch = sign * MAX_PITCH * pf;
-        for (let i = 0; i < steps; i++) {
-          const t = (i + 1) / steps;
-          let ease = 1;
-          if (t < 0.2) ease = t / 0.2;
-          else if (t > 0.8) ease = (1 - t) / 0.2;
-          state.positions.push({ x: state.x + sign * Math.cos(hr) * dist * t, y: state.y + sign * Math.sin(hr) * dist * t, z: state.z, heading: state.heading, pitch: pitch * ease, roll: 0 });
-        }
-        state.x += sign * Math.cos(hr) * dist;
-        state.y += sign * Math.sin(hr) * dist;
-        dur = steps * DT;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
-      case 'move_left':
-      case 'move_right': {
-        const dist = (parseFloat(p.dist) || 50) / 100;
-        const power = parseFloat(p.power) || 50;
-        const pf = power / 100;
-        const speed = pf * DEFAULT_SPEED * 2;
-        const steps = Math.max(Math.ceil(dist / (speed * DT)), 5);
-        const hr = state.heading * Math.PI / 180;
-        const roll = cmd.type === 'move_left' ? -MAX_ROLL * pf : MAX_ROLL * pf;
-        for (let i = 0; i < steps; i++) {
-          const t = (i + 1) / steps;
-          const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
-          let px, py;
-          if (cmd.type === 'move_left') { px = state.x + Math.sin(hr) * dist * t; py = state.y - Math.cos(hr) * dist * t; }
-          else { px = state.x - Math.sin(hr) * dist * t; py = state.y + Math.cos(hr) * dist * t; }
-          state.positions.push({ x: px, y: py, z: state.z, heading: state.heading, pitch: 0, roll: roll * ease });
-        }
-        if (cmd.type === 'move_left') { state.x += Math.sin(hr) * dist; state.y -= Math.cos(hr) * dist; }
-        else { state.x -= Math.sin(hr) * dist; state.y += Math.cos(hr) * dist; }
-        dur = steps * DT;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
-      case 'move_up':
-      case 'move_down': {
-        const dist = (parseFloat(p.dist) || 50) / 100;
-        const power = parseFloat(p.power) || 50;
-        const sign = cmd.type === 'move_up' ? 1 : -1;
-        const pf = power / 100;
-        const speed = pf * DEFAULT_SPEED * 2;
-        const steps = Math.max(Math.ceil(dist / (speed * DT)), 5);
-        for (let i = 0; i < steps; i++) {
-          const t = (i + 1) / steps;
-          const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
-          state.positions.push({ x: state.x, y: state.y, z: state.z + sign * dist * t, heading: state.heading, pitch: 0, roll: 0 });
-        }
-        state.z += sign * dist;
-        dur = steps * DT;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
-      case 'turn_left':
-      case 'turn_right': {
-        const deg = parseFloat(p.deg) || 90;
-        const steps = Math.max(Math.ceil(deg / 180 * 10), 5);
-        const degFactor = Math.min(deg / 360, 1);
-        const rollDir = cmd.type === 'turn_left' ? -MAX_ROLL * degFactor : MAX_ROLL * degFactor;
-        for (let i = 0; i < steps; i++) {
-          const t = (i + 1) / steps;
-          const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
-          state.heading += (cmd.type === 'turn_left' ? -deg : deg) / steps;
-          state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: rollDir * ease });
-        }
-        dur = deg / 180;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
-      case 'circle': {
-        const radius = (parseFloat(p.radius) || 50) / 100;
-        const power = parseFloat(p.power) || 50;
-        const pf = power / 100;
-        const steps = 60;
-        for (let i = 0; i < steps; i++) {
-          const angle = 2 * Math.PI * i / steps;
-          state.positions.push({ x: state.x + radius * Math.cos(angle), y: state.y + radius * Math.sin(angle), z: state.z, heading: state.heading, pitch: 0, roll: -MAX_ROLL * pf * Math.sin(angle) });
-        }
-        state.x += radius;
-        dur = 3 * pf;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
-      case 'square': {
-        const side = (parseFloat(p.size) || 50) / 100;
-        const power = parseFloat(p.power) || 50;
-        const pf = power / 100;
-        const stepsPerSide = 15;
-        const hr = state.heading * Math.PI / 180;
-        const dirs = [[Math.cos(hr), Math.sin(hr)], [-Math.sin(hr), Math.cos(hr)], [-Math.cos(hr), -Math.sin(hr)], [Math.sin(hr), -Math.cos(hr)]];
-        const sidePitch = [-MAX_PITCH * pf, 0, MAX_PITCH * pf, 0];
-        const sideRoll = [0, -MAX_ROLL * pf, 0, MAX_ROLL * pf];
-        for (let si = 0; si < dirs.length; si++) {
-          const [ddx, ddy] = dirs[si];
-          for (let i = 0; i < stepsPerSide; i++) {
-            const t = (i + 1) / stepsPerSide;
-            const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
-            state.positions.push({ x: state.x + ddx * side * t, y: state.y + ddy * side * t, z: state.z, heading: state.heading, pitch: sidePitch[si] * ease, roll: sideRoll[si] * ease });
-          }
-          state.x += ddx * side; state.y += ddy * side;
-        }
-        dur = 4 * pf;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
-      case 'triangle': {
-        const side = (parseFloat(p.size) || 50) / 100;
-        const power = parseFloat(p.power) || 50;
-        const pf = power / 100;
-        const stepsPerSide = 15;
-        const hr = state.heading * Math.PI / 180;
-        for (let i = 0; i < 3; i++) {
-          const angle = hr + i * (2 * Math.PI / 3);
-          const ddx = Math.cos(angle), ddy = Math.sin(angle);
-          for (let j = 0; j < stepsPerSide; j++) {
-            const t = (j + 1) / stepsPerSide;
-            const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
-            state.positions.push({ x: state.x + ddx * side * t, y: state.y + ddy * side * t, z: state.z, heading: state.heading, pitch: -MAX_PITCH * pf * ease, roll: 0 });
-          }
-          state.x += ddx * side; state.y += ddy * side;
-        }
-        dur = 4 * pf;
-        state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
-        break;
-      }
+       case 'move_forward':
+       case 'move_backward': {
+         const dist = (parseFloat(p.dist) || 50) / 100;
+         const speed = (parseFloat(p.speed) || 50) / 100;
+         const sign = cmd.type === 'move_forward' ? 1 : -1;
+         const steps = Math.max(Math.ceil(dist / (speed * DEFAULT_SPEED * 2 * DT)), 5);
+         const hr = state.heading * Math.PI / 180;
+         const pitch = sign * MAX_PITCH * speed;
+         for (let i = 0; i < steps; i++) {
+           const t = (i + 1) / steps;
+           let ease = 1;
+           if (t < 0.2) ease = t / 0.2;
+           else if (t > 0.8) ease = (1 - t) / 0.2;
+           state.positions.push({ x: state.x + sign * Math.cos(hr) * dist * t, y: state.y + sign * Math.sin(hr) * dist * t, z: state.z, heading: state.heading, pitch: pitch * ease, roll: 0 });
+         }
+         state.x += sign * Math.cos(hr) * dist;
+         state.y += sign * Math.sin(hr) * dist;
+         dur = steps * DT;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'move_left':
+       case 'move_right': {
+         const dist = (parseFloat(p.dist) || 50) / 100;
+         const speed = (parseFloat(p.speed) || 50) / 100;
+         const steps = Math.max(Math.ceil(dist / (speed * DEFAULT_SPEED * 2 * DT)), 5);
+         const hr = state.heading * Math.PI / 180;
+         const roll = cmd.type === 'move_left' ? -MAX_ROLL * speed : MAX_ROLL * speed;
+         for (let i = 0; i < steps; i++) {
+           const t = (i + 1) / steps;
+           const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
+           let px, py;
+           if (cmd.type === 'move_left') { px = state.x + Math.sin(hr) * dist * t; py = state.y - Math.cos(hr) * dist * t; }
+           else { px = state.x - Math.sin(hr) * dist * t; py = state.y + Math.cos(hr) * dist * t; }
+           state.positions.push({ x: px, y: py, z: state.z, heading: state.heading, pitch: 0, roll: roll * ease });
+         }
+         if (cmd.type === 'move_left') { state.x += Math.sin(hr) * dist; state.y -= Math.cos(hr) * dist; }
+         else { state.x -= Math.sin(hr) * dist; state.y += Math.cos(hr) * dist; }
+         dur = steps * DT;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'turn_left':
+       case 'turn_right': {
+         const deg = parseFloat(p.deg) || 90;
+         const steps = Math.max(Math.ceil(deg / 180 * 10), 5);
+         const degFactor = Math.min(deg / 360, 1);
+         const rollDir = cmd.type === 'turn_left' ? -MAX_ROLL * degFactor : MAX_ROLL * degFactor;
+         for (let i = 0; i < steps; i++) {
+           const t = (i + 1) / steps;
+           const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
+           state.heading += (cmd.type === 'turn_left' ? -deg : deg) / steps;
+           state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: rollDir * ease });
+         }
+         dur = deg / 180;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'turn_degree': {
+         const deg = parseFloat(p.deg) || 90;
+         const timeout = parseFloat(p.timeout) || 3;
+         const steps = Math.max(Math.ceil(timeout * 10), 5);
+         const degFactor = Math.min(Math.abs(deg) / 360, 1);
+         const rollDir = deg > 0 ? MAX_ROLL * degFactor : -MAX_ROLL * degFactor;
+         for (let i = 0; i < steps; i++) {
+           const t = (i + 1) / steps;
+           const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
+           state.heading += deg / steps;
+           state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: rollDir * ease });
+         }
+         dur = timeout;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'circle':
+       case 'circle_turn': {
+         const speed = (parseFloat(p.speed) || 75) / 100;
+         const direction = p.dir === 'counter-clockwise' ? -1 : 1;
+         const radius = 0.5;
+         const steps = 60;
+         for (let i = 0; i < steps; i++) {
+           const angle = 2 * Math.PI * i / steps * direction;
+           state.positions.push({ x: state.x + radius * Math.cos(angle), y: state.y + radius * Math.sin(angle), z: state.z, heading: state.heading, pitch: 0, roll: -MAX_ROLL * speed * Math.sin(angle * direction) });
+         }
+         state.x += radius * direction;
+         dur = 3 * speed;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'square':
+       case 'triangle':
+       case 'square_turn':
+       case 'triangle_turn': {
+         const speed = (parseFloat(p.speed) || 60) / 100;
+         const secs = parseFloat(p.secs) || 1;
+         const direction = p.dir === 'counter-clockwise' ? -1 : 1;
+         const isTriangle = cmd.type.includes('triangle');
+         const numSides = isTriangle ? 3 : 4;
+         const side = 0.5;
+         const stepsPerSide = 15;
+         const hr = state.heading * Math.PI / 180;
+         const sideAngles = [];
+         for (let i = 0; i < numSides; i++) {
+           sideAngles.push(hr + (i * 2 * Math.PI / numSides) * direction);
+         }
+         for (let si = 0; si < numSides; si++) {
+           const angle = sideAngles[si];
+           const ddx = Math.cos(angle), ddy = Math.sin(angle);
+           for (let i = 0; i < stepsPerSide; i++) {
+             const t = (i + 1) / stepsPerSide;
+             const ease = t < 0.2 ? t / 0.2 : t > 0.8 ? (1 - t) / 0.2 : 1;
+             state.positions.push({ x: state.x + ddx * side * t, y: state.y + ddy * side * t, z: state.z, heading: state.heading, pitch: -MAX_PITCH * speed * ease, roll: 0 });
+           }
+           state.x += ddx * side; state.y += ddy * side;
+         }
+         dur = numSides * secs * speed;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'spiral': {
+         const speed = (parseFloat(p.speed) || 50) / 100;
+         const direction = p.dir === 'counter-clockwise' ? -1 : 1;
+         const steps = 120;
+         for (let i = 0; i < steps; i++) {
+           const t = i / steps;
+           const angle = 4 * Math.PI * t * direction;
+           const radius = t * 0.5;
+           state.positions.push({ x: state.x + radius * Math.cos(angle), y: state.y + radius * Math.sin(angle), z: state.z + t * 0.3, heading: state.heading, pitch: 0, roll: -MAX_ROLL * speed * Math.sin(angle) });
+         }
+         state.x += 0.5 * Math.cos(4 * Math.PI * direction);
+         state.y += 0.5 * Math.sin(4 * Math.PI * direction);
+         state.z += 0.3;
+         dur = 5 * speed;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'sway': {
+         const speed = (parseFloat(p.speed) || 50) / 100;
+         const dir = p.dir || 'forward-back';
+         const steps = 40;
+         for (let i = 0; i < steps; i++) {
+           const t = i / steps;
+           const angle = 2 * Math.PI * t;
+           let pitch = 0, roll = 0;
+           if (dir === 'forward-back') pitch = MAX_PITCH * speed * Math.sin(angle);
+           else if (dir === 'left-right') roll = MAX_ROLL * speed * Math.sin(angle);
+           else if (dir === 'up-down') state.z += 0.1 * speed * Math.sin(angle) * (i === 0 ? 1 : 0);
+           else if (dir === 'turn-left') state.heading += 5 * speed * Math.sin(angle) * (i === 0 ? 1 : 0);
+           else if (dir === 'turn-right') state.heading -= 5 * speed * Math.sin(angle) * (i === 0 ? 1 : 0);
+           else if (dir === 'pitch-forward') pitch = MAX_PITCH * speed;
+           else if (dir === 'pitch-backward') pitch = -MAX_PITCH * speed;
+           else if (dir === 'roll-left') roll = -MAX_ROLL * speed;
+           else if (dir === 'roll-right') roll = MAX_ROLL * speed;
+           state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch, roll });
+         }
+         dur = 2 * speed;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'keep_distance':
+       case 'avoid_wall': {
+         const dist = (parseFloat(p.dist) || 50) / 100;
+         const speed = (parseFloat(p.speed) || 50) / 100;
+         const steps = Math.max(Math.ceil(dist / (speed * DEFAULT_SPEED * DT)), 5);
+         const hr = state.heading * Math.PI / 180;
+         for (let i = 0; i < steps; i++) {
+           const t = (i + 1) / steps;
+           state.positions.push({ x: state.x - Math.cos(hr) * dist * t, y: state.y - Math.sin(hr) * dist * t, z: state.z, heading: state.heading, pitch: 0, roll: 0 });
+         }
+         state.x -= Math.cos(hr) * dist;
+         state.y -= Math.sin(hr) * dist;
+         dur = steps * DT;
+         state.positions.push(pos(state.x, state.y, state.z, state.heading, 0, 0));
+         break;
+       }
+       case 'detect_wall': {
+         vars[p.var] = 0;
+         dur = 0.1;
+         break;
+       }
 
-      case 'led': {
-        state.ledColor = p.color || 'green';
-        state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: 0, led: state.ledColor });
-        dur = 0.1;
-        break;
-      }
-      case 'buzzer': { dur = parseFloat(p.dur) || 0.5; break; }
-      case 'random_led': {
-        const colors = ['red','green','blue','yellow','cyan','magenta','white','purple','orange','pink'];
-        state.ledColor = colors[Math.floor(Math.random() * colors.length)];
-        state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: 0, led: state.ledColor });
-        dur = 0.1;
-        break;
-      }
+       case 'led': {
+         const r = Math.min(Math.max(parseInt(p.r) || 0, 0), 255);
+         const g = Math.min(Math.max(parseInt(p.g) || 255, 0), 255);
+         const b = Math.min(Math.max(parseInt(p.b) || 0, 0), 255);
+         const brightness = Math.min(Math.max(parseInt(p.brightness) || 100, 0), 255);
+         state.ledColor = { r, g, b, brightness };
+         state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: 0, led: state.ledColor });
+         dur = 0.1;
+         break;
+       }
+       case 'led_off': {
+         state.ledColor = { r: 0, g: 0, b: 0, brightness: 0 };
+         state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: 0, led: state.ledColor });
+         dur = 0.1;
+         break;
+       }
+       case 'buzzer': {
+         dur = (parseFloat(p.dur) || 500) / 1000;
+         break;
+       }
 
       case 'var_declare': { vars[p.name] = evalExpr(p.value, vars); dur = 0; break; }
       case 'set_var': {
@@ -331,13 +381,26 @@ function processCommands(commands, vars, state, maxIter = 500) {
         dur = 0;
         break;
       }
-      case 'break_cmd': { dur = 0; break; }
+       case 'break_cmd': { dur = 0; break; }
+       case 'emergency_stop':
+       case 'stop_motors': {
+         const steps = 10;
+         for (let i = 0; i < steps; i++) {
+           state.positions.push({ x: state.x, y: state.y, z: state.z, heading: state.heading, pitch: 0, roll: 0 });
+         }
+         state.flying = false;
+         dur = 0.5;
+         break;
+       }
 
-      case 'get_distance': { vars[p.var] = 100; dur = 0; break; }
-      case 'get_height': { vars[p.var] = 0.8; dur = 0; break; }
-      case 'get_color': { vars[p.var] = 'green'; dur = 0; break; }
-      case 'get_battery': { vars[p.var] = 80; dur = 0; break; }
-      case 'get_temperature': { vars[p.var] = 22; dur = 0; break; }
+       case 'get_battery': { vars[p.var] = 80; dur = 0; break; }
+       case 'get_height': { vars[p.var] = state.z * 100; dur = 0; break; }
+       case 'get_front_range': { vars[p.var] = 100; dur = 0; break; }
+       case 'get_bottom_range': { vars[p.var] = state.z * 100; dur = 0; break; }
+       case 'get_front_color': { vars[p.var] = 'green'; dur = 0; break; }
+       case 'get_back_color': { vars[p.var] = 'blue'; dur = 0; break; }
+       case 'get_temperature': { vars[p.var] = 22; dur = 0; break; }
+       case 'detect_wall': { vars[p.var] = 0; dur = 0.1; break; }
 
       case 'func_def': {
         vars['__func_' + p.name] = cmd.children || [];

@@ -58,11 +58,13 @@
 
           <div id="command-palette">
             <h3>Add Command</h3>
-            <div class="cmd-section">
+             <div class="cmd-section">
               <div class="cmd-section-label">Flight</div>
               <div class="cmd-grid">
                 <button class="cmd-btn cat-flight" data-cmd="takeoff">Takeoff</button>
                 <button class="cmd-btn cat-flight" data-cmd="land">Land</button>
+                <button class="cmd-btn cat-flight" data-cmd="emergency_stop">Emergency Stop</button>
+                <button class="cmd-btn cat-flight" data-cmd="stop_motors">Stop Motors</button>
                 <button class="cmd-btn cat-flight" data-cmd="hover">Hover</button>
                 <button class="cmd-btn cat-flight" data-cmd="flip">Flip</button>
                 <button class="cmd-btn cat-flight" data-cmd="go">Go</button>
@@ -70,13 +72,19 @@
                 <button class="cmd-btn cat-flight" data-cmd="move_backward">Back</button>
                 <button class="cmd-btn cat-flight" data-cmd="move_left">Left</button>
                 <button class="cmd-btn cat-flight" data-cmd="move_right">Right</button>
-              <button class="cmd-btn cat-flight" data-cmd="move_up">Up</button>
-              <button class="cmd-btn cat-flight" data-cmd="move_down">Down</button>
                 <button class="cmd-btn cat-flight" data-cmd="turn_left">Turn L</button>
                 <button class="cmd-btn cat-flight" data-cmd="turn_right">Turn R</button>
+                <button class="cmd-btn cat-flight" data-cmd="turn_degree">Turn</button>
                 <button class="cmd-btn cat-flight" data-cmd="circle">Circle</button>
+                <button class="cmd-btn cat-flight" data-cmd="circle_turn">Circle Turn</button>
                 <button class="cmd-btn cat-flight" data-cmd="square">Square</button>
+                <button class="cmd-btn cat-flight" data-cmd="square_turn">Square Turn</button>
                 <button class="cmd-btn cat-flight" data-cmd="triangle">Triangle</button>
+                <button class="cmd-btn cat-flight" data-cmd="triangle_turn">Triangle Turn</button>
+                <button class="cmd-btn cat-flight" data-cmd="spiral">Spiral</button>
+                <button class="cmd-btn cat-flight" data-cmd="sway">Sway</button>
+                <button class="cmd-btn cat-flight" data-cmd="keep_distance">Keep Distance</button>
+                <button class="cmd-btn cat-flight" data-cmd="avoid_wall">Avoid Wall</button>
               </div>
             </div>
             <div class="cmd-section">
@@ -91,14 +99,14 @@
                 <button class="cmd-btn cat-control" data-cmd="break_cmd">Break</button>
               </div>
             </div>
-            <div class="cmd-section">
+             <div class="cmd-section">
               <div class="cmd-section-label">Output</div>
               <div class="cmd-grid">
-              <button class="cmd-btn cat-output" data-cmd="led">LED</button>
-              <button class="cmd-btn cat-output" data-cmd="buzzer">Buzzer</button>
-              <button class="cmd-btn cat-output" data-cmd="random_led">Random LED</button>
-              <button class="cmd-btn cat-output" data-cmd="time_sleep">Sleep</button>
-              <button class="cmd-btn cat-output" data-cmd="drone_sleep">Drone Sleep</button>
+                <button class="cmd-btn cat-output" data-cmd="led">LED</button>
+                <button class="cmd-btn cat-output" data-cmd="led_off">LED Off</button>
+                <button class="cmd-btn cat-output" data-cmd="buzzer">Buzzer</button>
+                <button class="cmd-btn cat-output" data-cmd="time_sleep">Sleep</button>
+                <button class="cmd-btn cat-output" data-cmd="drone_sleep">Drone Sleep</button>
               </div>
             </div>
             <div class="cmd-section">
@@ -110,14 +118,17 @@
                 <button class="cmd-btn cat-var" data-cmd="user_input">Input</button>
               </div>
             </div>
-            <div class="cmd-section">
+             <div class="cmd-section">
               <div class="cmd-section-label">Sensors</div>
               <div class="cmd-grid">
-                <button class="cmd-btn cat-sensor" data-cmd="get_distance">Distance</button>
-                <button class="cmd-btn cat-sensor" data-cmd="get_height">Height</button>
-                <button class="cmd-btn cat-sensor" data-cmd="get_color">Color</button>
                 <button class="cmd-btn cat-sensor" data-cmd="get_battery">Battery</button>
+                <button class="cmd-btn cat-sensor" data-cmd="get_height">Height</button>
+                <button class="cmd-btn cat-sensor" data-cmd="get_front_range">Front Range</button>
+                <button class="cmd-btn cat-sensor" data-cmd="get_bottom_range">Bottom Range</button>
+                <button class="cmd-btn cat-sensor" data-cmd="get_front_color">Front Color</button>
+                <button class="cmd-btn cat-sensor" data-cmd="get_back_color">Back Color</button>
                 <button class="cmd-btn cat-sensor" data-cmd="get_temperature">Temp</button>
+                <button class="cmd-btn cat-sensor" data-cmd="detect_wall">Detect Wall</button>
               </div>
             </div>
             <div class="cmd-section">
