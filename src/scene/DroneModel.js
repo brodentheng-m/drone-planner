@@ -17,6 +17,7 @@ const LED_COLORS = {
 export function createDroneMesh() {
   const group = new THREE.Group();
   group.userData.leds = [];
+  const SCALE = 0.1 / 0.28; // Scale from 0.28m to 0.1m (100mm = actual CoDrone EDU body width)
 
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2d5aa0, roughness: 0.35, metalness: 0.4 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: 0.4, metalness: 0.5 });
@@ -448,13 +449,13 @@ export function createDroneMesh() {
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ff4444';
   ctx.fillText('FRONT', 128, 32);
-  const texture = new THREE.CanvasTexture(canvas);
-  const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(0.18, 0.045, 1);
-  sprite.position.set(0, 0.08, -0.17);
-  sprite.userData.isFrontIndicator = true;
-  group.add(sprite);
+   const texture = new THREE.CanvasTexture(canvas);
+   const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+   const sprite = new THREE.Sprite(spriteMat);
+   sprite.scale.set(0.18 * SCALE, 0.045 * SCALE, 1);
+   sprite.position.set(0, 0.08 * SCALE, -0.17 * SCALE);
+   sprite.userData.isFrontIndicator = true;
+   group.add(sprite);
 
   const ventMat = new THREE.MeshStandardMaterial({ color: 0x1a2a4a, roughness: 0.5 });
   for (let side = -1; side <= 1; side += 2) {
@@ -491,7 +492,9 @@ export function createDroneMesh() {
     );
     screw.position.set(pos.x, -0.036, pos.z);
     group.add(screw);
-  });
+   });
+
+  group.scale.set(SCALE, SCALE, SCALE);
 
   return group;
 }

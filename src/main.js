@@ -344,6 +344,21 @@ function bindCopyCode() {
       setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
     });
   });
+
+  document.getElementById('btn-apply-code').addEventListener('click', () => {
+    const code = document.getElementById('code-output').value;
+    try {
+      const commands = parseDroneScript(code);
+      const activeDrone = getActiveDrone(plan);
+      if (activeDrone) {
+        activeDrone.commands = commands;
+        refresh();
+        logMessage('Code applied successfully!', 'success');
+      }
+    } catch (e) {
+      logMessage(`Error applying code: ${e.message}`, 'error');
+    }
+  });
 }
 
 function getCommandByPath(commands, path) {
@@ -585,7 +600,8 @@ function updateCodePreview() {
   } else {
     code = generateCoDroneScript(getActiveCommands(plan));
   }
-  document.getElementById('code-output').textContent = code;
+  const codeOutput = document.getElementById('code-output');
+  codeOutput.value = code;
 }
 
 function refresh() {

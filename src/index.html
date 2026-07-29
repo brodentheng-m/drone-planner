@@ -183,13 +183,16 @@
         </div>
       </div>
 
-      <div id="right-panel">
-        <div id="code-preview">
-          <h3>Generated Code</h3>
-          <pre id="code-output"></pre>
-          <button id="btn-copy-code" title="Copy to clipboard">Copy</button>
-        </div>
-      </div>
+       <div id="right-panel">
+         <div id="code-preview">
+           <h3>Generated Code</h3>
+           <textarea id="code-output" spellcheck="false"></textarea>
+           <div id="code-actions">
+             <button id="btn-copy-code" title="Copy to clipboard">Copy</button>
+             <button id="btn-apply-code" title="Apply edited code">Apply</button>
+           </div>
+         </div>
+       </div>
     </main>
 
     <footer id="console-panel">
