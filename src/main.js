@@ -52,6 +52,8 @@ function init() {
     log(`COLLISION: ${droneId} hit ${collision.obstacle.type} (${collision.obstacle.name})`, 'error');
   };
 
+  setInterval(highlightCurrentCommand, 100);
+
   window.onerror = (msg, src, line, col, err) => {
     log(`Error: ${msg} (${src}:${line}:${col})`, 'error');
   };
@@ -649,6 +651,27 @@ function showCmdOptions(cmd) {
   }
 }
 
+let currentHighlightIndex = -1;
+
+function highlightCurrentCommand() {
+  const codeOutput = document.getElementById('code-output');
+  if (!codeOutput) return;
+
+  const newIndex = scene3d.getCurrentCommandIndex();
+  if (newIndex === currentHighlightIndex) return;
+  currentHighlightIndex = newIndex;
+
+  const code = codeOutput.value;
+  if (code) {
+    const lines = code.split('\n');
+    if (newIndex >= 0 && newIndex < lines.length) {
+      codeOutput.value = lines.map((line, i) => 
+        i === newIndex ? `> ${line}` : line
+      ).join('\n');
+    }
+  }
+}
+
 function updateCodePreview() {
   let code;
   if (plan.drones.length > 1) {
@@ -658,6 +681,7 @@ function updateCodePreview() {
   }
   const codeOutput = document.getElementById('code-output');
   codeOutput.value = code;
+  currentHighlightIndex = -1;
 }
 
 function refresh() {

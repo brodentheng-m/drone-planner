@@ -54,6 +54,8 @@ export class Scene3D {
     this.onPositionUpdate = null;
     this.onLog = null;
     this.onCollision = null;
+    this.currentCommandIndex = -1;
+    this.currentDroneId = null;
 
     this.obstacleManager = new ObstacleManager(this.scene);
 
@@ -323,7 +325,9 @@ export class Scene3D {
       this._ensureDroneMesh(drone.id, drone.color);
     }
 
-    this.swarmResults = simulateSwarm(drones, this.obstacleManager);
+    this.swarmResults = simulateSwarm(drones, this.obstacleManager, (cmd, index) => {
+      this.currentCommandIndex = index;
+    });
 
     for (const drone of drones) {
       const result = this.swarmResults[drone.id];
@@ -414,6 +418,10 @@ export class Scene3D {
 
   exportObstacles() {
     return this.obstacleManager.exportObstacles();
+  }
+
+  getCurrentCommandIndex() {
+    return this.currentCommandIndex;
   }
 
   _animLoop() {

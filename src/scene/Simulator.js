@@ -31,10 +31,11 @@ function evalExpr(expr, vars) {
   } catch { return 0; }
 }
 
-function processCommands(commands, vars, state, maxIter = 500, obstacleManager = null) {
+function processCommands(commands, vars, state, maxIter = 500, obstacleManager = null, onCommandStart = null) {
   let iter = 0;
   for (const cmd of commands) {
     if (iter++ > maxIter) break;
+    if (onCommandStart) onCommandStart(cmd, iter - 1);
     const p = cmd.params || {};
     let dur = 0;
 
@@ -463,7 +464,7 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
   }
 }
 
-function simulateSingleDrone(drone, obstacleManager = null) {
+function simulateSingleDrone(drone, obstacleManager = null, onCommandStart = null) {
   const offset = drone.offset || [0, 0, 0];
   const state = {
     x: 0, y: 0, z: 0, heading: 0,
@@ -474,7 +475,7 @@ function simulateSingleDrone(drone, obstacleManager = null) {
     collisions: []
   };
   const vars = {};
-  processCommands(drone.commands, vars, state, undefined, obstacleManager);
+  processCommands(drone.commands, vars, state, undefined, obstacleManager, onCommandStart);
 
   let currentLed = 'off';
   for (const p of state.positions) {
@@ -488,16 +489,16 @@ function simulateSingleDrone(drone, obstacleManager = null) {
   return { positions: state.positions, totalDuration: state.totalDuration, collisions: state.collisions };
 }
 
-export function simulateCommands(commands) {
-  return simulateSingleDrone({ commands, offset: [0, 0, 0] });
+export function simulateCommands(commands, onCommandStart = null) {
+  return simulateSingleDrone({ commands, offset: [0, 0, 0] }, null, onCommandStart);
 }
 
-export function simulateSwarm(drones, obstacleManager = null) {
+export function simulateSwarm(drones, obstacleManager = null, onCommandStart = null) {
   const results = {};
   let maxDuration = 0;
 
   for (const drone of drones) {
-    const result = simulateSingleDrone(drone, obstacleManager);
+    const result = simulateSingleDrone(drone, obstacleManager, onCommandStart);
     results[drone.id] = result;
     if (result.totalDuration > maxDuration) maxDuration = result.totalDuration;
   }
