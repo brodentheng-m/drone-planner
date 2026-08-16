@@ -258,3 +258,25 @@ Model: opencode-go/deepseek-v4-pro
   roll monotonic 359 deg, returns to start (end horiz 0.053, end z diff 0.043), all finite.
 - Samples trace the oval: h 0 -> 0.33 -> 0.06 at apex -> 0.33 -> closes near 0.
 - Zero comments and zero emojis.
+
+---
+
+## Task H: Flip nose follows the circle + accelerate-fast-decelerate speed profile  [COMPLETE]
+
+Model: opencode-go/deepseek-v4-pro
+
+### Work (src/scene/Simulator.js, flip case)
+- The drone's orientation now FOLLOWS the oval path (tangent to the ellipse) instead of a free
+  spin: tangent = atan2(Rv*cos(phi), -Rh*sin(phi)), unwrapped to a monotonic 0..360 angle, applied
+  as pitch (back/forward) or roll (left/right). The drone's nose/top traces the circle -> it turns
+  over at the top (inverted near 180) and comes back upright (360). Other axis stays 0.
+- Added a non-uniform speed profile u(s) = (1 - cos(pi*s))/2 so the drone ACCELERATES going in,
+  is FASTEST around the top/middle of the oval (the flip), and DECELERATES back to the start.
+  Tuned numPoints 300 -> 200 so the mid-flip speed clearly dominates.
+
+### Verification (judge, independent)
+- `npm run build` PASS.
+- flip band (pitch 2..360) isolated from takeoff/land: pitch monotonic 2->360 (inverts near 180),
+  speed start/mid/end = 0.09/0.36/0.04, midMax=0.47 vs edgeAvg=0.11 (ratio 4.32), max in middle
+  third, path closes (netH 0.008, dz 0.035). roll stays 0 on a back flip.
+- Zero comments and zero emojis.

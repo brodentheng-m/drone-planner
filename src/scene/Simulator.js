@@ -145,7 +145,7 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
       }
       case 'flip': {
         const dir = p.dir || 'back';
-        const numPoints = 300;
+        const numPoints = 200;
         const hr = state.heading * Math.PI / 180;
         const hx = state.x, hy = state.y, hz = state.z;
         const cosH = Math.cos(hr);
@@ -158,13 +158,26 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
         const Rh = FLIP_TRAVEL;
         const Rv = FLIP_CLIMB;
         const phi0 = -Math.PI / 2;
+        let prevTangent = null;
+        let tangent = 0;
         for (let i = 0; i < numPoints; i++) {
-          const t = i / (numPoints - 1);
-          const phi = phi0 + 2 * Math.PI * t;
-          const theta = 360 * t;
+          const s = i / (numPoints - 1);
+          const u = (1 - Math.cos(Math.PI * s)) / 2;
+          const phi = phi0 + 2 * Math.PI * u;
           const tx = hx + dirX * Rh * Math.cos(phi);
           const ty = hy + dirY * Rh * Math.cos(phi);
           const tz = hz + Rv + Rv * Math.sin(phi);
+          const raw = Math.atan2(Rv * Math.cos(phi), -Rh * Math.sin(phi));
+          if (prevTangent === null) {
+            tangent = raw;
+          } else {
+            let d = raw - prevTangent;
+            while (d > Math.PI) d -= 2 * Math.PI;
+            while (d < -Math.PI) d += 2 * Math.PI;
+            tangent += d;
+          }
+          prevTangent = raw;
+          const theta = tangent * 180 / Math.PI;
           let pitch = 0, roll = 0;
           if (dir === 'back') pitch = theta;
           else if (dir === 'forward') pitch = -theta;
