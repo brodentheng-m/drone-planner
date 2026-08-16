@@ -185,3 +185,30 @@ Model: opencode-go/deepseek-v4-pro
   detect_wall, emergency_stop, stop_motors, set_drone_LED, drone_LED_off, drone_buzzer,
   get_battery/get_height/get_front_range/get_bottom_range/get_front_color/get_back_color/
   get_temperature, pair, close.
+
+---
+
+## Task E: Camera modes (remove keyboard camera controls)  [COMPLETE]
+
+Model: opencode-go/deepseek-v4-pro (camera/orbit logic)
+
+### Work (done by opencode)
+- Removed keyboard camera movement entirely: deleted `_bindKeys()`, `_processCameraKeys()`,
+  and the `this.keys` state from src/scene/Scene3D.js; removed the per-frame
+  `this._processCameraKeys()` call in `_animLoop`. WASD/Shift/Ctrl no longer move the camera.
+- Added two camera modes (default Mode 1 "Map"):
+  - Mode 1 "Cam: Map": camera locked onto the map center. Each frame sets
+    `controls.target = (0, 0.15, 0)`; user can still mouse-orbit.
+  - Mode 2 "Cam: Drone": camera follows the active drone. Locks `camera.position = dronePos + offset`
+    and `controls.target = dronePos`; offset is captured once per playback and re-based on
+    play()/stop()/reset().
+- Added `setCameraMode(mode)` on Scene3D (coerces to 1/2, snaps to center on Mode 1).
+- Added `#camera-mode-select` UI (options "Cam: Map" / "Cam: Drone") in the playback bar;
+  main.js wires its change event; style.css styles it to match playback controls.
+- OrbitControls drag-to-orbit retained in both modes.
+
+### Verification (judge, independent)
+- `npm run build` PASS.
+- Confirmed absent: `_processCameraKeys`, `_bindKeys`, `this.keys` in Scene3D.js.
+- Confirmed present: `setCameraMode`, `cameraMode`, `camera-mode-select`.
+- Zero comments and zero emojis across Scene3D.js/main.js/style.css/index.html.

@@ -35,8 +35,8 @@ export class Scene3D {
     this.controls.maxPolarAngle = Math.PI / 2.1;
     this.controls.enabled = true;
 
-    this.keys = {};
-    this._bindKeys();
+    this.cameraMode = 1;
+    this._camOffset = null;
 
     this._addLights();
     this._addGround();
@@ -102,47 +102,6 @@ export class Scene3D {
         codeTextarea.blur();
       }
     });
-  }
-
-  _bindKeys() {
-    const down = (e) => {
-      this.keys[e.code] = true;
-      if (['ShiftLeft','ShiftRight','ControlLeft','ControlRight'].includes(e.code)) {
-        e.preventDefault();
-      }
-    };
-    const up = (e) => { this.keys[e.code] = false; };
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    this.canvas.addEventListener('blur', () => { this.keys = {}; });
-  }
-
-  _processCameraKeys() {
-    const k = this.keys;
-    const hasWASD = k.KeyW || k.KeyS || k.KeyA || k.KeyD || k.ShiftLeft || k.ShiftRight || k.ControlLeft || k.ControlRight;
-    if (!hasWASD) return;
-
-    const speed = 0.08;
-    const cam = this.camera;
-    const forward = new THREE.Vector3();
-    cam.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
-
-    const right = new THREE.Vector3();
-    right.crossVectors(forward, cam.up).normalize();
-
-    const move = new THREE.Vector3(0, 0, 0);
-
-    if (k.KeyW) move.add(forward.clone().multiplyScalar(speed));
-    if (k.KeyS) move.add(forward.clone().multiplyScalar(-speed));
-    if (k.KeyA) move.add(right.clone().multiplyScalar(-speed));
-    if (k.KeyD) move.add(right.clone().multiplyScalar(speed));
-    if (k.ShiftLeft || k.ShiftRight) move.y += speed;
-    if (k.ControlLeft || k.ControlRight) move.y -= speed;
-
-    cam.position.add(move);
-    this.controls.target.add(move);
   }
 
   _addLights() {
@@ -482,6 +441,14 @@ export class Scene3D {
     }));
   }
 
+  setCameraMode(mode) {
+    this.cameraMode = mode === 2 ? 2 : 1;
+    this._camOffset = null;
+    if (mode === 1) {
+      this.controls.target.set(0, 0.15, 0);
+    }
+  }
+
   play() {
     if (!this.swarmResults || Object.keys(this.swarmResults).length === 0) {
       if (this.onLog) this.onLog('No commands to play', 'warn');
@@ -489,6 +456,7 @@ export class Scene3D {
     }
     this.isPlaying = true;
     this.simTime = 0;
+    this._camOffset = null;
 
     for (const id of Object.keys(this.droneTrails)) {
       this.droneTrails[id].clear();
@@ -508,6 +476,7 @@ export class Scene3D {
   stop() {
     this.isPlaying = false;
     this.simTime = 0;
+    this._camOffset = null;
     for (const id of Object.keys(this.droneTrails)) {
       this.droneTrails[id].clear();
     }
@@ -634,7 +603,6 @@ export class Scene3D {
   _animLoop() {
     requestAnimationFrame(() => this._animLoop());
 
-    this._processCameraKeys();
     this.controls.update();
 
     if (this.isPlaying && this.swarmResults) {
@@ -704,6 +672,17 @@ export class Scene3D {
          }
 
          if (!firstMesh) { firstMesh = mesh; firstPos = p; firstA = a; firstB = b; firstFrac = frac; }
+       }
+
+       if (this.cameraMode === 1) {
+         this.controls.target.set(0, 0.15, 0);
+       } else if (this.cameraMode === 2 && firstMesh) {
+         const dronePos = firstMesh.position;
+         if (!this._camOffset) {
+           this._camOffset = new THREE.Vector3().copy(this.camera.position).sub(dronePos);
+         }
+         this.camera.position.copy(dronePos).add(this._camOffset);
+         this.controls.target.copy(dronePos);
        }
 
        if (this.onPositionUpdate && firstPos) {

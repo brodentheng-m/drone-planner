@@ -497,6 +497,14 @@ html, body {
   font-family: 'Fira Code', monospace; font-weight: 500;
 }
 
+#camera-mode-select {
+  background: var(--bg-light); color: var(--text); border: 1px solid var(--border);
+  padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 11px;
+  font-family: 'Inter', sans-serif; transition: var(--transition);
+}
+#camera-mode-select:hover { background: var(--bg-lighter); border-color: var(--accent); color: var(--text); }
+#camera-mode-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+
 #position-readout {
   display: flex; gap: 16px; font-size: 11px; color: var(--text-dim);
   font-family: 'Fira Code', monospace; padding: 6px 12px; background: var(--bg-medium);

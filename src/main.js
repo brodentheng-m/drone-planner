@@ -65,6 +65,13 @@ function init() {
     pushTelemetrySample(telemetry);
   };
 
+  const cameraSelect = document.getElementById('camera-mode-select');
+  if (cameraSelect) {
+    cameraSelect.addEventListener('change', (e) => {
+      scene3d.setCameraMode(parseInt(e.target.value, 10));
+    });
+  }
+
   canvas.addEventListener('waypoint-selected', (e) => {
     selectedPath = [e.detail.commandIndex];
     renderCommandList();
