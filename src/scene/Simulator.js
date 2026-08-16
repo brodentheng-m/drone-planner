@@ -2,13 +2,12 @@ import * as THREE from 'three';
 import { AeroEngine } from './AeroEngine.js';
 
 const TAKEOFF_HEIGHT = 0.8;
-const FLIP_RADIUS_H = 0.35;
-const FLIP_RADIUS_V = 0.45;
+const FLIP_TRAVEL = 0.35;
+const FLIP_CLIMB = 0.45;
 const DEFAULT_SPEED = 0.5;
 const DT = 0.05;
 const MAX_PITCH = 25;
 const MAX_ROLL = 25;
-const FLIP_PITCH_MAX = 45;
 const MAX_YAW_RATE = 180;
 
 function clamp(v, lo, hi) {
@@ -146,29 +145,34 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
       }
       case 'flip': {
         const dir = p.dir || 'back';
-        const numPoints = 40;
+        const numPoints = 80;
         const hr = state.heading * Math.PI / 180;
         const hx = state.x, hy = state.y, hz = state.z;
+        const cosH = Math.cos(hr);
+        const sinH = Math.sin(hr);
+        let dirX = 0, dirY = 0;
+        if (dir === 'forward') { dirX = cosH; dirY = sinH; }
+        else if (dir === 'back') { dirX = -cosH; dirY = -sinH; }
+        else if (dir === 'left') { dirX = sinH; dirY = -cosH; }
+        else { dirX = -sinH; dirY = cosH; }
         for (let i = 0; i < numPoints; i++) {
-          const t = i / numPoints;
-          const angle = 2 * Math.PI * t;
-          let fx = hx, fy = hy, fz = hz;
-          if (dir === 'back') { fx -= FLIP_RADIUS_H * Math.sin(angle) * Math.cos(hr); fy -= FLIP_RADIUS_H * Math.sin(angle) * Math.sin(hr); fz += FLIP_RADIUS_V * (1 - Math.cos(angle)); }
-          else if (dir === 'forward') { fx += FLIP_RADIUS_H * Math.sin(angle) * Math.cos(hr); fy += FLIP_RADIUS_H * Math.sin(angle) * Math.sin(hr); fz += FLIP_RADIUS_V * (1 - Math.cos(angle)); }
-          else if (dir === 'left') { fx -= FLIP_RADIUS_H * Math.sin(angle) * Math.sin(hr); fy += FLIP_RADIUS_H * Math.sin(angle) * Math.cos(hr); fz += FLIP_RADIUS_V * (1 - Math.cos(angle)); }
-          else { fx += FLIP_RADIUS_H * Math.sin(angle) * Math.sin(hr); fy -= FLIP_RADIUS_H * Math.sin(angle) * Math.cos(hr); fz += FLIP_RADIUS_V * (1 - Math.cos(angle)); }
+          const t = i / (numPoints - 1);
+          const theta = 360 * t;
+          const fwd = FLIP_TRAVEL * Math.sin(Math.PI * t);
+          const alt = FLIP_CLIMB * Math.sin(Math.PI * t);
+          const tx = hx + dirX * fwd;
+          const ty = hy + dirY * fwd;
+          const tz = hz + alt;
           let pitch = 0, roll = 0;
-          if (dir === 'back') pitch = FLIP_PITCH_MAX * Math.sin(angle);
-          else if (dir === 'forward') pitch = -FLIP_PITCH_MAX * Math.sin(angle);
-          else if (dir === 'left') roll = FLIP_PITCH_MAX * Math.sin(angle);
-          else roll = -FLIP_PITCH_MAX * Math.sin(angle);
-          driveStep(state, engine, fx, fy, fz, state.heading, DT);
+          if (dir === 'back') pitch = theta;
+          else if (dir === 'forward') pitch = -theta;
+          else if (dir === 'left') roll = theta;
+          else roll = -theta;
+          driveStep(state, engine, tx, ty, tz, state.heading, DT);
           pushPoint(state, engine, state.heading, pitch, roll);
         }
-        if (dir === 'back') { state.x -= FLIP_RADIUS_H * 2 * Math.cos(hr); state.y -= FLIP_RADIUS_H * 2 * Math.sin(hr); }
-        else if (dir === 'forward') { state.x += FLIP_RADIUS_H * 2 * Math.cos(hr); state.y += FLIP_RADIUS_H * 2 * Math.sin(hr); }
-        else if (dir === 'left') { state.x -= FLIP_RADIUS_H * 2 * Math.sin(hr); state.y += FLIP_RADIUS_H * 2 * Math.cos(hr); }
-        else { state.x += FLIP_RADIUS_H * 2 * Math.sin(hr); state.y -= FLIP_RADIUS_H * 2 * Math.cos(hr); }
+        state.x = hx;
+        state.y = hy;
         state.z = hz;
         driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
         pushPoint(state, engine, state.heading, 0, 0);

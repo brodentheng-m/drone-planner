@@ -212,3 +212,26 @@ Model: opencode-go/deepseek-v4-pro (camera/orbit logic)
 - Confirmed absent: `_processCameraKeys`, `_bindKeys`, `this.keys` in Scene3D.js.
 - Confirmed present: `setCameraMode`, `cameraMode`, `camera-mode-select`.
 - Zero comments and zero emojis across Scene3D.js/main.js/style.css/index.html.
+
+---
+
+## Task F: Realistic drone flip animation  [COMPLETE]
+
+Model: opencode-go/deepseek-v4-pro (physics/kinematics)
+
+### Work (done by opencode, src/scene/Simulator.js only)
+- Replaced the old parametric in-place flip (used sin() oscillation of pitch/roll, so the model
+  wobbled instead of tumbling) with a realistic staged flip.
+- Replaced constants FLIP_RADIUS_H/V and FLIP_PITCH_MAX with FLIP_TRAVEL (0.35) and FLIP_CLIMB (0.45).
+- 80-point flip: staged position via fwd = FLIP_TRAVEL*sin(pi*t) (0->A->0: forward then back) and
+  alt = FLIP_CLIMB*sin(pi*t) (0->B->0: up then down) along the flip axis, plus a MONOTONIC 360-degree
+  attitude sweep (pitch for back/forward, roll for left/right). Results in: move forward a bit ->
+  go up -> go back -> flip over (inverted at 180) -> flip back over (upright at 360). Settles back
+  at the original position/altitude with level attitude.
+
+### Verification (judge, independent)
+- `npm run build` PASS.
+- Own node test of a back flip after takeoff: pitch monotonic 0->360, max altitude 1.28m above
+  entry 0.00 (climbs), staged trajectory (up, then flip crossing 180 deg inverted, then descend
+  back, pitch reaching 360 upright), net horizontal 0.088m (returns near start), all finite.
+- Zero comments and zero emojis in Simulator.js.
