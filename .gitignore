@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-app/
+*.AppImage
+*.log
+.DS_Store
+.obsidian/workspace.json
