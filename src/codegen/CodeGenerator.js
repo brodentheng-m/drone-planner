@@ -2,7 +2,7 @@ import { getCommandCode, COMMAND_DEFS } from '../commands/Commands.js';
 
 export function generateDroneScript(commands) {
   const lines = [
-    'from drone import *',
+    'from codrone_edu.drone import *',
     'import time',
     '',
     'drone = Drone()',
@@ -23,7 +23,7 @@ export function generateSwarmScript(drones) {
   }
 
   const lines = [
-    'from drone import *',
+    'from codrone_edu.drone import *',
     'import time',
     'import threading',
     ''
