@@ -235,3 +235,26 @@ Model: opencode-go/deepseek-v4-pro (physics/kinematics)
   entry 0.00 (climbs), staged trajectory (up, then flip crossing 180 deg inverted, then descend
   back, pitch reaching 360 upright), net horizontal 0.088m (returns near start), all finite.
 - Zero comments and zero emojis in Simulator.js.
+
+---
+
+## Task G: Flip path is a clean oval (top directly above flip start)  [COMPLETE]
+
+Model: opencode-go/deepseek-v4-pro
+
+### Work (src/scene/Simulator.js, flip case)
+- Replaced the previous sin(t) staged drift with a literal vertical OVAL path the drone follows.
+- Oval: center at (hx,hy,hz+Rv), point = (hx + dirX*Rh*cos(phi), hy + dirY*Rh*cos(phi),
+  hz + Rv + Rv*sin(phi)), phi from -PI/2 to 3*PI/2. So the drone starts at the bottom of the
+  oval, rises, reaches the TOP directly above the flip start (at phi=PI/2, z=hz+2*Rv), comes
+  back down, and closes at the start. Rh=FLIP_TRAVEL, Rv=FLIP_CLIMB.
+- numPoints 80 -> 300 so the damped AeroEngine tracks the oval tightly (less residual drift at the
+  apex and it visibly closes), plus 8 settle frames back to (hx,hy,hz) level.
+- Monotonic 360-degree tumble preserved: pitch for back/forward, roll for left/right.
+
+### Verification (judge, independent)
+- `npm run build` PASS.
+- Own node test (left flip): apex at z=1.72 with horizontal offset 0.056 (top above start, <0.08),
+  roll monotonic 359 deg, returns to start (end horiz 0.053, end z diff 0.043), all finite.
+- Samples trace the oval: h 0 -> 0.33 -> 0.06 at apex -> 0.33 -> closes near 0.
+- Zero comments and zero emojis.

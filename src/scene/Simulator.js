@@ -145,7 +145,7 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
       }
       case 'flip': {
         const dir = p.dir || 'back';
-        const numPoints = 80;
+        const numPoints = 300;
         const hr = state.heading * Math.PI / 180;
         const hx = state.x, hy = state.y, hz = state.z;
         const cosH = Math.cos(hr);
@@ -155,14 +155,16 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
         else if (dir === 'back') { dirX = -cosH; dirY = -sinH; }
         else if (dir === 'left') { dirX = sinH; dirY = -cosH; }
         else { dirX = -sinH; dirY = cosH; }
+        const Rh = FLIP_TRAVEL;
+        const Rv = FLIP_CLIMB;
+        const phi0 = -Math.PI / 2;
         for (let i = 0; i < numPoints; i++) {
           const t = i / (numPoints - 1);
+          const phi = phi0 + 2 * Math.PI * t;
           const theta = 360 * t;
-          const fwd = FLIP_TRAVEL * Math.sin(Math.PI * t);
-          const alt = FLIP_CLIMB * Math.sin(Math.PI * t);
-          const tx = hx + dirX * fwd;
-          const ty = hy + dirY * fwd;
-          const tz = hz + alt;
+          const tx = hx + dirX * Rh * Math.cos(phi);
+          const ty = hy + dirY * Rh * Math.cos(phi);
+          const tz = hz + Rv + Rv * Math.sin(phi);
           let pitch = 0, roll = 0;
           if (dir === 'back') pitch = theta;
           else if (dir === 'forward') pitch = -theta;
@@ -174,8 +176,11 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
         state.x = hx;
         state.y = hy;
         state.z = hz;
-        driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
-        pushPoint(state, engine, state.heading, 0, 0);
+        const settleFrames = 8;
+        for (let i = 0; i < settleFrames; i++) {
+          driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
+          pushPoint(state, engine, state.heading, 0, 0);
+        }
         dur = numPoints * DT;
         break;
       }
