@@ -3,7 +3,9 @@ import { AeroEngine } from './AeroEngine.js';
 
 const TAKEOFF_HEIGHT = 0.8;
 const FLIP_TRAVEL = 0.35;
-const FLIP_CLIMB = 0.45;
+const FLIP_CLIMB = 0.2;
+const FLIP_POINTS = 6;
+const FLIP_SETTLE = 2;
 const DEFAULT_SPEED = 0.5;
 const DT = 0.05;
 const MAX_PITCH = 25;
@@ -137,15 +139,16 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
       case 'hover': {
         dur = parseFloat(p.dur) || 1;
         const steps = Math.ceil(dur / DT);
+        const hx = state.x, hy = state.y, hz = state.z;
         for (let i = 0; i < steps; i++) {
-          driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
+          driveStep(state, engine, hx, hy, hz, state.heading, DT);
           pushPoint(state, engine, state.heading, 0, 0);
         }
         break;
       }
       case 'flip': {
         const dir = p.dir || 'back';
-        const numPoints = 200;
+        const numPoints = FLIP_POINTS;
         const hr = state.heading * Math.PI / 180;
         const hx = state.x, hy = state.y, hz = state.z;
         const cosH = Math.cos(hr);
@@ -155,29 +158,20 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
         else if (dir === 'back') { dirX = -cosH; dirY = -sinH; }
         else if (dir === 'left') { dirX = sinH; dirY = -cosH; }
         else { dirX = -sinH; dirY = cosH; }
-        const Rh = FLIP_TRAVEL;
-        const Rv = FLIP_CLIMB;
-        const phi0 = -Math.PI / 2;
-        let prevTangent = null;
-        let tangent = 0;
-        for (let i = 0; i < numPoints; i++) {
-          const s = i / (numPoints - 1);
-          const u = (1 - Math.cos(Math.PI * s)) / 2;
-          const phi = phi0 + 2 * Math.PI * u;
-          const tx = hx + dirX * Rh * Math.cos(phi);
-          const ty = hy + dirY * Rh * Math.cos(phi);
-          const tz = hz + Rv + Rv * Math.sin(phi);
-          const raw = Math.atan2(Rv * Math.cos(phi), -Rh * Math.sin(phi));
-          if (prevTangent === null) {
-            tangent = raw;
-          } else {
-            let d = raw - prevTangent;
-            while (d > Math.PI) d -= 2 * Math.PI;
-            while (d < -Math.PI) d += 2 * Math.PI;
-            tangent += d;
-          }
-          prevTangent = raw;
-          const theta = tangent * 180 / Math.PI;
+        const tPop = 1 / 6;
+        const tWhip = 1 / 3;
+        const tSnap = 5 / 6;
+        for (let i = 1; i <= numPoints; i++) {
+          const t = i / numPoints;
+          const horiz = FLIP_TRAVEL * Math.sin(Math.PI * t);
+          const tx = hx + dirX * horiz;
+          const ty = hy + dirY * horiz;
+          const tz = Math.max(hz + FLIP_CLIMB * 4 * t * (1 - t), 0);
+          let theta;
+          if (t <= tPop) theta = 0;
+          else if (t <= tWhip) theta = 90 * (t - tPop) / (tWhip - tPop);
+          else if (t <= tSnap) theta = 90 + 180 * (t - tWhip) / (tSnap - tWhip);
+          else theta = 270 + 90 * Math.sqrt((t - tSnap) / (1 - tSnap));
           let pitch = 0, roll = 0;
           if (dir === 'back') pitch = theta;
           else if (dir === 'forward') pitch = -theta;
@@ -189,12 +183,12 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
         state.x = hx;
         state.y = hy;
         state.z = hz;
-        const settleFrames = 8;
+        const settleFrames = FLIP_SETTLE;
         for (let i = 0; i < settleFrames; i++) {
-          driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
+          driveStep(state, engine, hx, hy, hz, state.heading, DT);
           pushPoint(state, engine, state.heading, 0, 0);
         }
-        dur = numPoints * DT;
+        dur = (numPoints + settleFrames) * DT;
         break;
       }
        case 'go': {
@@ -420,23 +414,24 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
          pushPoint(state, engine, state.heading, 0, 0);
          break;
        }
-       case 'sway': {
-         const speed = (parseFloat(p.speed) || 50) / 100;
-         const dir = p.dir || 'forward-back';
-         const steps = 40;
-         for (let i = 0; i < steps; i++) {
-           const t = i / steps;
-           const angle = 2 * Math.PI * t;
-           let pitch = 0, roll = 0;
-           if (dir === 'forward-back') pitch = MAX_PITCH * speed * Math.sin(angle);
-           else if (dir === 'left-right') roll = MAX_ROLL * speed * Math.sin(angle);
-           else if (dir === 'pitch-forward') pitch = MAX_PITCH * speed;
-           else if (dir === 'pitch-backward') pitch = -MAX_PITCH * speed;
-           else if (dir === 'roll-left') roll = -MAX_ROLL * speed;
-           else if (dir === 'roll-right') roll = MAX_ROLL * speed;
-           driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
-           pushPoint(state, engine, state.heading, pitch, roll);
-         }
+        case 'sway': {
+          const speed = (parseFloat(p.speed) || 50) / 100;
+          const dir = p.dir || 'forward-back';
+          const steps = 40;
+          const sx = state.x, sy = state.y, sz = state.z;
+          for (let i = 0; i < steps; i++) {
+            const t = i / steps;
+            const angle = 2 * Math.PI * t;
+            let pitch = 0, roll = 0;
+            if (dir === 'forward-back') pitch = MAX_PITCH * speed * Math.sin(angle);
+            else if (dir === 'left-right') roll = MAX_ROLL * speed * Math.sin(angle);
+            else if (dir === 'pitch-forward') pitch = MAX_PITCH * speed;
+            else if (dir === 'pitch-backward') pitch = -MAX_PITCH * speed;
+            else if (dir === 'roll-left') roll = -MAX_ROLL * speed;
+            else if (dir === 'roll-right') roll = MAX_ROLL * speed;
+            driveStep(state, engine, sx, sy, sz, state.heading, DT);
+            pushPoint(state, engine, state.heading, pitch, roll);
+          }
          dur = 2 * speed;
          driveStep(state, engine, state.x, state.y, state.z, state.heading, DT);
          pushPoint(state, engine, state.heading, 0, 0);
