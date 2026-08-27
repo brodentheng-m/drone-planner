@@ -287,8 +287,10 @@ Model: opencode-go/deepseek-v4-pro
 
 Supervisor/Judge: Hermes Agent. Implementer: opencode CLI, model opencode-go/deepseek-v4-flash
 pinned in every session (verified via `build · deepseek-v4-flash` header in run logs).
-Repo: ~/projects/DronePlannerObsidianVault (branch main). 26 opencode sessions total:
-13 review + 13 writer + 3 surgical fixers, in 4 waves. All code changes via opencode.
+Repo: ~/projects/DronePlannerObsidianVault (branch main). 36 opencode sessions total (all
+pinned opencode-go/deepseek-v4-flash, verified via `build · deepseek-v4-flash` header in run
+logs): 13 review + 13 writer (wave 2) + 3 parity fixers + 4 writers (wave 3) + 2 writers
+(wave 4) + 1 SW warm-up fixer. All code changes via opencode.
 
 ### Mission brief
 - Clean up the JS Drone Planner and make it run on OLD LOW-END hardware (10-year-old school
