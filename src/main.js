@@ -903,7 +903,7 @@ function renderCommandsRecursive(commands, container, depth, parentPath) {
             if (paramDef.max !== undefined) el.max = paramDef.max;
             if (paramDef.step) el.step = paramDef.step;
             el.addEventListener('input', () => {
-              cmd.params[paramDef.key] = parseFloat(el.value) || paramDef.default;
+              cmd.params[paramDef.key] = (el.value === '' || isNaN(parseFloat(el.value))) ? paramDef.default : parseFloat(el.value);
               debounceCodegen(updateCodePreview);
             });
             el.addEventListener('blur', () => renderCommandList());
@@ -988,7 +988,7 @@ function showCmdOptions(cmd) {
       if (paramDef.max !== undefined) el.max = paramDef.max;
       if (paramDef.step) el.step = paramDef.step;
       el.addEventListener('input', () => {
-        cmd.params[paramDef.key] = parseFloat(el.value) || paramDef.default;
+        cmd.params[paramDef.key] = (el.value === '' || isNaN(parseFloat(el.value))) ? paramDef.default : parseFloat(el.value);
         updateCodePreview();
         renderCommandList();
       });

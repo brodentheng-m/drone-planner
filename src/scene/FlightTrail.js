@@ -52,7 +52,7 @@ export class FlightTrail {
     this.positionAttr.array[i + 2] = pos.z;
     this.count++;
     this.positionAttr.needsUpdate = true;
-    this.lineGeo.setDrawRange(0, this.count * 3);
+    this.lineGeo.setDrawRange(0, this.count);
 
     this.glow.position.copy(pos);
     this.glow.visible = true;
