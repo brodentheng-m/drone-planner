@@ -1,4 +1,3 @@
-import { Scene3D } from './scene/Scene3D.js';
 import {
   createCommand, getCommandLabel,
   getCommandParams, createDefaultPlan, COMMAND_DEFS, isBlockCommand,
@@ -42,7 +41,7 @@ const CMD_CATEGORIES = {
 
 let plan = createDefaultPlan();
 plan.activeDroneId = plan.drones[0].id;
-let scene3d;
+let scene3d = null;
 let selectedPath = null;
 let isFlying = false;
 let hasCollision = false;
@@ -73,8 +72,9 @@ function log(msg, type = 'info') {
   el.scrollTop = el.scrollHeight;
 }
 
-function init() {
+async function init() {
   const canvas = document.getElementById('scene-canvas');
+  const { Scene3D } = await import('./scene/Scene3D.js');
   scene3d = new Scene3D(canvas);
   scene3d.onPositionUpdate = (x, y, z, heading) => {
     readoutPos.textContent = `X: ${x.toFixed(2)} Y: ${y.toFixed(2)} Z: ${z.toFixed(2)}`;
@@ -89,6 +89,11 @@ function init() {
   scene3d.onTelemetry = (telemetry) => {
     updateStatusMetrics(telemetry);
     pushTelemetrySample(telemetry);
+  };
+  scene3d.onPlaybackEnd = (z) => {
+    statusText.textContent = z < 0.15 ? 'Landed' : 'Completed';
+    statusDot.classList.remove('flying', 'collision');
+    statusText.classList.remove('flying', 'collision');
   };
 
   const cameraSelect = document.getElementById('camera-mode-select');

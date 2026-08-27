@@ -4,7 +4,7 @@ import { createDroneMesh, setAllLeds } from './DroneModel.js';
 import { FlightTrail } from './FlightTrail.js';
 import { ObstacleManager } from './ObstacleManager.js';
 import { simulateSwarm, simulateCommands } from './Simulator.js';
- 
+
 const DRONE_TINT_COLORS = [0x58a6ff, 0x3fb950, 0xf0883e, 0xbc8cff, 0x39d2c0, 0xf778ba, 0xd29922, 0xf85149];
 
 export class Scene3D {
@@ -61,6 +61,7 @@ export class Scene3D {
     this.onTelemetry = null;
     this.onLog = null;
     this.onCollision = null;
+    this.onPlaybackEnd = null;
     this.lastTelemetry = null;
     this.currentCommandIndex = -1;
     this.currentDroneId = null;
@@ -737,7 +738,14 @@ export class Scene3D {
          if (this.onTelemetry) this.onTelemetry(telemetry);
        }
 
-       if (t >= 1) this.isPlaying = false;
+       if (t >= 1 && this.isPlaying) {
+         this.isPlaying = false;
+         this.needsRender = true;
+         const primaryResult = Object.values(this.swarmResults)[0];
+         if (this.onPlaybackEnd && primaryResult && primaryResult.positions.length > 0) {
+           this.onPlaybackEnd(primaryResult.positions[primaryResult.positions.length - 1].z);
+         }
+       }
     }
 
     this.renderer.render(this.scene, this.camera);
