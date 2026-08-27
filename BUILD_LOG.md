@@ -403,3 +403,28 @@ probe correct. Commit 9cea7a3 (empty message), pushed; Pages redeployed.
 Also learned: Playwright readPixels on a WebGL canvas returns black between frames without
 preserveDrawingBuffer; use compositor screenshots (PNG decode) or a drawArrays hook instead
 for pixel-level verification.
+
+---
+
+## Feature: red planned path + green flown trail + axis removal (2026-08-27)  [COMPLETE]
+
+User request: "Make the drone path red and the part of the path the drone has flown green.
+fix the lines going in random directions." Diagnosis (instrumented build, hook removed after):
+the FlightTrail was geometrically correct all along (trail head buffer point == drone world
+position at every sample). The "random lines" were the 3 ArrowHelper coordinate axes drawn at
+the map origin inside the flight zone, plus full-page screenshots polluting pixel analysis
+with DOM accent colors (lesson: clip screenshots to the canvas bounding box).
+
+Changes (commit 5b0e46d, empty message, pushed; Pages redeployed):
+- Scene3D.js: removed the 3 ArrowHelper axes; added a RED planned route (0xf87171, transparent
+  0.85) per drone, built in setSwarm from swarmResults positions mapped (x, z, p.y), disposed
+  on rebuild/removeDrone; red line shows the whole plan, persists through stop/reset.
+- FlightTrail.js: line + glow colors 0x58a6ff -> 0x22c55e (GREEN flown path), and
+  this.line.renderOrder = 10 so the green trail always draws over the red route on flown
+  sections (no positional offset - avoids z-fight and ground-clipping everywhere).
+- src/public/sw.js: VERSION -> drone-planner-v2 to purge stale v1 caches on activate
+  (users on the pre-fix bundle get the new one after one reload).
+
+Verified: glcall probe LINE_STRIP grows 1:1 with flight samples (max 281) incl. live site;
+functional probe Landed/0 errors; parity PASS; rule scan clean (one known string-literal
+false positive). Canvas-clipped pixel maps show red route + green trail overlay + no axes.
