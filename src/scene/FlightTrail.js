@@ -14,17 +14,18 @@ export class FlightTrail {
     this.lineGeo.setDrawRange(0, 0);
 
     this.lineMat = new THREE.LineBasicMaterial({
-      color: 0x58a6ff,
+      color: 0x22c55e,
       linewidth: 2,
       transparent: true,
       opacity: 0.8
     });
     this.line = new THREE.Line(this.lineGeo, this.lineMat);
+    this.line.renderOrder = 10;
     this.line.frustumCulled = false;
     scene.add(this.line);
 
     this.glowGeo = new THREE.SphereGeometry(0.04, 8, 8);
-    this.glowMat = new THREE.MeshBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.4 });
+    this.glowMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.4 });
     this.glow = new THREE.Mesh(this.glowGeo, this.glowMat);
     this.glow.visible = false;
     scene.add(this.glow);

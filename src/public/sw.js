@@ -1,4 +1,4 @@
-const VERSION = 'drone-planner-v1';
+const VERSION = 'drone-planner-v2';
 const CACHE = VERSION + '-assets';
 const SHELL_CACHE = VERSION + '-shell';
 const OFFLINE_HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Offline</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;color:#333;"><h1>You are offline. Reconnect to run Drone Planner.</h1></body></html>';

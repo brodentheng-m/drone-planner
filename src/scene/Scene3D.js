@@ -46,12 +46,13 @@ export class Scene3D {
 
     this._addLights();
     this._addGround();
-    this._addAxes();
     this._addCompass();
 
     this.droneMeshes = {};
     this.droneTrails = {};
     this.droneLeds = {};
+    this.plannedPaths = {};
+    this._plannedPathMat = new THREE.LineBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.85 });
 
     this.swarmResults = null;
     this.simTime = 0;
@@ -191,39 +192,6 @@ export class Scene3D {
     }
   }
 
-  _addAxes() {
-    const len = 3;
-    const dirX = new THREE.Vector3(len, 0, 0);
-    const dirY = new THREE.Vector3(0, len, 0);
-    const dirZ = new THREE.Vector3(0, 0, len);
-    const origin = new THREE.Vector3(0, 0, 0);
-
-    this.scene.add(new THREE.ArrowHelper(dirX, origin, len, 0xf85149, 0.15, 0.08));
-    this.scene.add(new THREE.ArrowHelper(dirY, origin, len, 0x3fb950, 0.15, 0.08));
-    this.scene.add(new THREE.ArrowHelper(dirZ, origin, len, 0x58a6ff, 0.15, 0.08));
-
-    const makeLabel = (text, pos, color) => {
-      const c = document.createElement('canvas');
-      c.width = 64; c.height = 32;
-      const ctx = c.getContext('2d');
-      ctx.fillStyle = color;
-      ctx.font = 'bold 24px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, 32, 16);
-      const tex = new THREE.CanvasTexture(c);
-      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.position.copy(pos);
-      sprite.scale.set(0.5, 0.25, 1);
-      this.scene.add(sprite);
-    };
-
-    makeLabel('X', new THREE.Vector3(len + 0.3, 0, 0), '#f85149');
-    makeLabel('Z', new THREE.Vector3(0, 0, len + 0.3), '#58a6ff');
-    makeLabel('Y', new THREE.Vector3(0, len + 0.3, 0), '#3fb950');
-  }
-
   _addCompass() {
     const makeLabel = (text, pos) => {
       const c = document.createElement('canvas');
@@ -285,6 +253,11 @@ export class Scene3D {
       this.droneTrails[id].clear();
       delete this.droneTrails[id];
     }
+    if (this.plannedPaths[id]) {
+      this.scene.remove(this.plannedPaths[id]);
+      this.plannedPaths[id].geometry.dispose();
+      delete this.plannedPaths[id];
+    }
     delete this.droneLeds[id];
   }
 
@@ -311,6 +284,24 @@ export class Scene3D {
         this.routeMap[state.id].push({ index, posIndex: state.positions.length });
       }
     });
+
+    for (const id of Object.keys(this.plannedPaths)) {
+      this.scene.remove(this.plannedPaths[id]);
+      this.plannedPaths[id].geometry.dispose();
+    }
+    this.plannedPaths = {};
+
+    for (const drone of drones) {
+      const result = this.swarmResults[drone.id];
+      if (result && result.positions.length > 0) {
+        const pts = result.positions.map(p => new THREE.Vector3(p.x, p.z, p.y));
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const line = new THREE.Line(geo, this._plannedPathMat);
+        line.frustumCulled = false;
+        this.scene.add(line);
+        this.plannedPaths[drone.id] = line;
+      }
+    }
 
     for (const drone of drones) {
       const result = this.swarmResults[drone.id];
