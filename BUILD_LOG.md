@@ -428,3 +428,29 @@ Changes (commit 5b0e46d, empty message, pushed; Pages redeployed):
 Verified: glcall probe LINE_STRIP grows 1:1 with flight samples (max 281) incl. live site;
 functional probe Landed/0 errors; parity PASS; rule scan clean (one known string-literal
 false positive). Canvas-clipped pixel maps show red route + green trail overlay + no axes.
+
+---
+
+## Feature: pause-in-place + timeline scrubber (2026-08-27)  [COMPLETE]
+
+User request: "the stop button doesnt just send the drone back to the start, I need to scrub
+through the flight plan with my team." New playback model (commit 796049b, pushed, deployed):
+
+- Stop = PAUSE in place: drone + green trail + telemetry freeze exactly where they are.
+  Reset remains the back-to-start action.
+- Timeline scrubber: #playback-scrub range input (0-1000) added to the playback bar; drag
+  backward/forward through the plan. The green flown trail rebuilds to the scrub point (shrinks
+  backwards, grows forwards), the red planned route stays full, telemetry readouts and the
+  drone pose (position/rotation/LEDs) jump to the sampled frame, and the camera follows in
+  mode 2. Scrubbing to 100% fires the Landed/Completed end state.
+- Scene3D internals: per-frame playback work extracted into a single _applyFrame(t) used by
+  BOTH the anim loop and setPlaybackFraction (identical poses); _endFired flag unifies the
+  end-of-playback path; play() is now resume-aware (fresh start only after end or at t=0,
+  otherwise resumes mid-flight from simTime); onProgress(t) callback drives the slider thumb
+  during playback.
+- UI: slider styled to the glassy theme; enabled once the async scene initializes.
+
+Verified by DOM-based scrub probe (local + LIVE): pause holds position exact over 900ms; scrub
+to 20% moves the drone to mid-takeoff; scrub to 0 = start; scrub to 100% = Landed; slider
+tracks playback and is enabled; zero console errors. Functional probe, parity, glcall probe
+all PASS.
