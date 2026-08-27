@@ -78,6 +78,8 @@ export class Scene3D {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.canvas.addEventListener('click', (e) => this._onCanvasClick(e));
+    this.canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); });
+    this.canvas.addEventListener('webglcontextrestored', () => { this.needsRender = true; });
 
     this._animLoop();
     window.addEventListener('resize', () => this._onResize());

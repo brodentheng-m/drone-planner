@@ -13,6 +13,23 @@ if ((navigator.hardwareConcurrency || 8) <= 4 ||
   document.documentElement.classList.add('perf-mode');
 }
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(function (reg) {
+      return navigator.serviceWorker.ready.then(function () {
+        const urls = [...new Set(
+          performance.getEntriesByType('resource')
+            .map(r => r.name)
+            .filter(name => name.startsWith(location.origin) && !name.includes('sw.js'))
+        )];
+        if (reg.active) {
+          reg.active.postMessage({ type: 'WARM', urls: urls });
+        }
+      });
+    })
+    .catch(() => {});
+}
+
 const readoutPos = document.getElementById('readout-pos');
 const readoutHeading = document.getElementById('readout-heading');
 const statusAlt = document.getElementById('status-alt');

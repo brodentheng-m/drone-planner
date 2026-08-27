@@ -280,3 +280,100 @@ Model: opencode-go/deepseek-v4-pro
   speed start/mid/end = 0.09/0.36/0.04, midMax=0.47 vs edgeAvg=0.11 (ratio 4.32), max in middle
   third, path closes (netH 0.008, dz 0.035). roll stays 0 on a back flip.
 - Zero comments and zero emojis.
+
+---
+
+## Mission: Low-End Hardware Optimization (2026-08-26/27)  [COMPLETE]
+
+Supervisor/Judge: Hermes Agent. Implementer: opencode CLI, model opencode-go/deepseek-v4-flash
+pinned in every session (verified via `build · deepseek-v4-flash` header in run logs).
+Repo: ~/projects/DronePlannerObsidianVault (branch main). 26 opencode sessions total:
+13 review + 13 writer + 3 surgical fixers, in 4 waves. All code changes via opencode.
+
+### Mission brief
+- Clean up the JS Drone Planner and make it run on OLD LOW-END hardware (10-year-old school
+  laptops, weak GPUs, 2-4GB RAM). Improve in any way possible. Work autonomously.
+- Baseline (this machine, software GL): 17 FPS playback, 59.6ms avg frame, 185 longtasks/6s
+  (11.7s blocking), single 611.57kB JS chunk, load 183ms, 1 CSP page error, status stuck on
+  FLYING after playback (no end state).
+
+### Wave 1 - Review (13 parallel flash agents, report-only)
+- One reviewer per file/domain with AGENT_BRIEF + TASK per shard. All 13 reports landed in
+  .opencode/swarm_shards/reviews/. Top findings: uncapped DPR + antialias + 2048 shadow map
+  (Scene3D), per-frame trail buffer rebuild + GL buffer leak (FlightTrail), per-frame Box3/
+  setFromObject collision allocation storm (ObstacleManager), 6 PointLight glow per drone
+  (DroneModel), telemetry chart redrawn every frame even when collapsed + 300-array copy
+  (main.js), 20 backdrop-filters re-blurring the canvas (style.css), single 611KB chunk with
+  no code split + dead Simulator import forcing three into the initial chunk (build/startup),
+  CSP-blocked Google Fonts @import as a render-blocking round trip.
+- Reviewer claims cross-checked against the live tree before applying (rejected: random_led/
+  get_distance "orphaned" claim - parser and codegen reference them).
+
+### Wave 2 - Writers (13 parallel flash agents, one file per owner)
+- Scene3D: antialias off, DPR cap 1.5 (1.0 in perf-mode), shadow map 2048->1024, shadows off
+  in perf-mode, 4 directional lights -> 1 sun, dirty-flag render loop (idle = no GPU work),
+  disposeObject3D + Scene3D.dispose(), scratch Vector3 for trail+collision, propellers
+  precomputed via traverse, waypoints MeshBasic + shared geometry.
+- FlightTrail: preallocated 2000-point ring buffer + drawRange + needsUpdate (in-place
+  bufferSubData, no GL leak), frustumCulled=false, dead setStaticPath removed.
+- ObstacleManager: world AABBs precomputed at add/update (zero per-frame allocation), shared
+  geometry+material per type, dispose-once clearAll, hoop segments 16/48->8/24.
+- DroneModel: 6 PointLights removed, all 29 MeshStandard->MeshLambert (+MeshBasic for
+  sub-pixel), shared per-type geometries, castShadow gated on perf-mode, invisible FRONT
+  sprite removed, sub-pixel parts deleted, isPropeller moved to blade groups (visible blades
+  now actually spin), export disposeDroneMesh(group).
+- main.js: 9 hot DOM refs cached, chart gated on expanded + cached size/colors, Float64Array
+  ring buffer, debounced resize, BUG FIX apply-code logMessage->log, dead imports removed,
+  highlight interval lifecycle managed, codegen debounced 150ms, perf-mode probe
+  (hardwareConcurrency/deviceMemory/prefers-reduced-motion -> html.perf-mode).
+- style.css: html.perf-mode degradation rules, prefers-reduced-motion block, Google Fonts
+  @import removed, dead .card/.cmd-block-close removed, scrollbar rule moved off *.
+- index.html: inline data-URI favicon (kills /favicon.ico 404 round trip).
+- Simulator.js: maxIter 500->10000 (silent truncation of 500+ command plans), evalExpr
+  memoized per expression string, scratch control/telemetry/vector pooling (value-safe).
+- AeroEngine.js: trig reuse + rad conversion (see fixers), speed/drag memoized, pooled
+  telemetry object.
+- CodeGenerator.js: swarm block droneVar substitution fixed, falsy-0-default fixes.
+- Commands.js: BUG FIX time_sleep def added (Sleep button did nothing), move_*/shape def
+  factories (dedup, identical output).
+- ObstacleImporter.js: double JSON.parse removed, full-text copies removed, no-faces OBJ
+  bounded.
+- ScriptParser.js: blank-line-in-block truncation FIXED, falsy-0 coercion fixed, regex
+  dispatch (57 regex/line -> token dispatch): 684us -> 118us per 200-line import (5.8x).
+
+### Wave 3 - Code split + UX (4 flash agents)
+- main.js: Scene3D now loaded via dynamic import() after the UI shell; initial JS chunk
+  611.57kB -> 61.20kB (10x), three.js in its own cache-stable chunk (489kB, manualChunks),
+  chunkSizeWarningLimit 800 (vite.config.js).
+- Playback end state: Scene3D emits onPlaybackEnd(z) once when t reaches 1 and stops
+  (isPlaying=false); main.js sets status Landed (z<0.15) or Completed. No more eternal FLYING.
+- Nits: trailing whitespace + EOF newline fixed.
+
+### Wave 4 - Resilience + offline (2 flash agents)
+- Service worker (public/sw.js): versioned caches, network-first document with offline
+  fallback page, stale-while-revalidate assets; registered from main.js. Offline capable +
+  instant repeat loads on school networks.
+- WebGL context-loss resilience: webglcontextlost preventDefault + webglcontextrestored
+  needsRender handlers in Scene3D.
+
+### Parity enforcement (judge, independent)
+- /tmp/parity_check.cjs bundles OLD (git tag baseline-pre-cleanup-20260826) vs NEW
+  Simulator/AeroEngine/CodeGenerator/Commands and deep-compares positions[], totalDuration,
+  generated code. Three parity breaks were caught and fixed by surgical fixer sessions:
+  (1) DEG2RAD hoisting changed (x*Math.PI/180) association -> 1-ULP drift; restored literal
+  forms. (2) _speed memo captured pre-clamp magnitude -> wrong speed field. (3) _speed memo
+  went stale when getTelemetry ran without a step (landed point) -> computed fresh;
+  _drag kept last-step semantics with reset init 0. Final: PARITY PASS (positions, duration,
+  codegen byte-identical; only intended diff: time_sleep def added).
+
+### Measured results (same machine, same harness)
+- FPS during playback: 17 -> 42 (2.5x). Avg frame: 59.6ms -> 24ms. p95: 66.7 -> 33.4.
+- Longtasks per 6s: 185 (11.7s blocking) -> 6 (0.7s) default; 0 perf-mode.
+- Initial JS chunk: 611.57kB -> 61.20kB (three separate, cache-stable). Load: 183ms -> 49ms.
+- Page console errors: 1 (CSP font) -> 0.
+- Status flow now ends in Landed/Completed (was stuck FLYING forever).
+- Sim/codegen parity preserved byte-for-byte; generated drone Python unchanged for all
+  existing commands (codrone_edu 2.8 compatible).
+
+### Commits
+- 0d53460 (wave 2), d3ffd0d (wave 3), final (waves 4 + build log). All empty-message.
