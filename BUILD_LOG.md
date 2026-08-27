@@ -379,3 +379,27 @@ logs): 13 review + 13 writer (wave 2) + 3 parity fixers + 4 writers (wave 3) + 2
 
 ### Commits
 - 0d53460 (wave 2), d3ffd0d (wave 3), final (waves 4 + build log). All empty-message.
+
+---
+
+## Hotfix: flight-path drawRange + param coercion (2026-08-27)  [COMPLETE]
+
+Post-mission bug report from the user: "the flight path isnt being drawn properly".
+Root cause (verified against three r170 src/objects/Line.js): the wave-2 FlightTrail ring-buffer
+rewrite called `lineGeo.setDrawRange(0, this.count * 3)` - drawRange.count is a VERTEX count
+(3 floats per vertex), so the line strip drew 3x too many vertices, snapping the tail of the
+path through the zero-filled buffer back to the map origin. Fix: `setDrawRange(0, this.count)`.
+Proof: WebGL drawArrays interception probe showed the LINE_STRIP vertex count growing 1:1 with
+sample points (11..281) after the fix, where it would have been 3x before.
+
+Second same-class bug found while probing: the number-param input handlers used
+`parseFloat(el.value) || paramDef.default`, silently replacing legitimate 0 values with the
+default (speed=0, power=0 impossible to enter). Fixed at both sites (renderCommandsRecursive
+inline edit and showCmdOptions) to default only on empty/unparseable input.
+
+Verified: build PASS, parity PASS, functional probe PASS (Landed, 0 errors), trail draw-call
+probe correct. Commit 9cea7a3 (empty message), pushed; Pages redeployed.
+
+Also learned: Playwright readPixels on a WebGL canvas returns black between frames without
+preserveDrawingBuffer; use compositor screenshots (PNG decode) or a drawArrays hook instead
+for pixel-level verification.
