@@ -23,9 +23,11 @@ export class AeroEngine {
     this.yaw = 0;
     this.yawRate = 0;
     this.thrust = 0;
-    this.drag = 0;
     this.energyUsedWh = 0;
     this._targetZ = undefined;
+    this._drag = 0;
+    this._tel = undefined;
+    this._vel = undefined;
   }
 
   step(throttle, control = {}, dt = 0.05) {
@@ -44,6 +46,9 @@ export class AeroEngine {
     const pitchRad = pitchDeg * Math.PI / 180;
     const rollRad = rollDeg * Math.PI / 180;
     const yawRad = this.yaw * Math.PI / 180;
+    const cosPitch = Math.cos(pitchRad);
+    const cosRoll = Math.cos(rollRad);
+    const tiltBase = cosPitch * cosRoll;
 
     let thrustTotal;
     if (targetZ !== undefined && Number.isFinite(targetZ)) {
@@ -52,7 +57,7 @@ export class AeroEngine {
       const err = targetZ - this.position.z;
       const errDot = targetVel - this.velocity.z;
       const requiredUp = this.mass * this.gravity + this.altitude_kp * err + this.altitude_kd * errDot;
-      const tilt = Math.max(Math.cos(pitchRad) * Math.cos(rollRad), 0.25);
+      const tilt = Math.max(tiltBase, 0.25);
       thrustTotal = Math.min(Math.max(requiredUp / tilt, 0), this.max_thrust);
     } else {
       thrustTotal = t * this.max_thrust;
@@ -60,12 +65,12 @@ export class AeroEngine {
 
     const fwdX = Math.cos(yawRad);
     const fwdY = Math.sin(yawRad);
-    const rightX = -Math.sin(yawRad);
-    const rightY = Math.cos(yawRad);
+    const rightX = -fwdY;
+    const rightY = fwdX;
 
     const fFwd = -thrustTotal * Math.sin(pitchRad);
     const fRight = thrustTotal * Math.sin(rollRad);
-    const fUp = thrustTotal * Math.cos(pitchRad) * Math.cos(rollRad);
+    const fUp = thrustTotal * cosPitch * cosRoll;
 
     const fx = fFwd * fwdX + fRight * rightX;
     const fy = fFwd * fwdY + fRight * rightY;
@@ -91,7 +96,6 @@ export class AeroEngine {
       v.y *= scale;
       v.z *= scale;
     }
-
     this.position.x += v.x * dt;
     this.position.y += v.y * dt;
     this.position.z += v.z * dt;
@@ -101,12 +105,13 @@ export class AeroEngine {
     }
 
     this.thrust = thrustTotal;
-    this.drag = Math.hypot(dragX, dragY, dragZ);
+    this._drag = Math.hypot(dragX, dragY, dragZ);
     this.energyUsedWh += this.energy_drain * thrustTotal * dt / this.efficiency;
   }
 
   getTelemetry() {
     const v = this.velocity;
+    const speed = Math.hypot(v.x, v.y, v.z);
     const horizSpeed = Math.hypot(v.x, v.y);
     const bankRad = this.roll * Math.PI / 180;
     let turnRadiusM = Infinity;
@@ -117,18 +122,25 @@ export class AeroEngine {
       }
     }
     const batteryPercent = Math.max(0, 100 * (1 - this.energyUsedWh / this.battery_capacity_wh));
-    return {
-      pitch: this.pitch,
-      roll: this.roll,
-      yaw: this.yaw,
-      speed_mps: Math.hypot(v.x, v.y, v.z),
-      altitude_m: this.position.z,
-      velocityVector: { x: v.x, y: v.y, z: v.z },
-      thrust: this.thrust,
-      drag: this.drag,
-      energyUsedWh: this.energyUsedWh,
-      batteryPercent,
-      turnRadiusM
-    };
+    if (!this._tel) {
+      this._tel = {};
+      this._vel = {};
+    }
+    const tel = this._tel;
+    this._vel.x = v.x;
+    this._vel.y = v.y;
+    this._vel.z = v.z;
+    tel.pitch = this.pitch;
+    tel.roll = this.roll;
+    tel.yaw = this.yaw;
+    tel.speed_mps = speed;
+    tel.altitude_m = this.position.z;
+    tel.velocityVector = this._vel;
+    tel.thrust = this.thrust;
+    tel.drag = this._drag;
+    tel.energyUsedWh = this.energyUsedWh;
+    tel.batteryPercent = batteryPercent;
+    tel.turnRadiusM = turnRadiusM;
+    return tel;
   }
 }

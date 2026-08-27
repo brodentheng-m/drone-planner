@@ -31,14 +31,22 @@ function replaceVars(expr, vars) {
   return result;
 }
 
+const _exprCache = new Map();
 function evalExpr(expr, vars) {
   try {
     const replaced = replaceVars(expr, vars);
-    return Function('"use strict"; return (' + replaced + ')')();
+    let fn = _exprCache.get(replaced);
+    if (!fn) {
+      fn = Function('"use strict"; return (' + replaced + ')');
+      _exprCache.set(replaced, fn);
+    }
+    return fn();
   } catch { return 0; }
 }
 
-function computeControl(engine, tx, ty, tz, th, dt) {
+const _ctrl = {};
+const _v3 = new THREE.Vector3();
+function computeControl(engine, tx, ty, tz, th, dt, out) {
   const g = engine.gravity;
   const v = engine.velocity;
   const pos = engine.position;
@@ -75,11 +83,16 @@ function computeControl(engine, tx, ty, tz, th, dt) {
 
   const yawRate = clamp((th - engine.yaw) / dt, -MAX_YAW_RATE, MAX_YAW_RATE);
 
-  return { throttle: 0, pitch: pitchDeg, roll: rollDeg, yaw: yawRate, targetAltitude: tz };
+  out.throttle = 0;
+  out.pitch = pitchDeg;
+  out.roll = rollDeg;
+  out.yaw = yawRate;
+  out.targetAltitude = tz;
+  return out;
 }
 
 function driveStep(state, engine, tx, ty, tz, th, dt) {
-  const control = computeControl(engine, tx, ty, tz, th, dt);
+  const control = computeControl(engine, tx, ty, tz, th, dt, _ctrl);
   engine.step(control.throttle, control, dt);
   state.x = engine.position.x;
   state.y = engine.position.y;
@@ -97,7 +110,7 @@ function pushPoint(state, engine, heading, pitch, roll, led) {
   state.positions.push(p);
 }
 
-function processCommands(commands, vars, state, maxIter = 500, obstacleManager = null, onCommandStart = null) {
+function processCommands(commands, vars, state, maxIter = 10000, obstacleManager = null, onCommandStart = null) {
   let iter = 0;
   for (const cmd of commands) {
     if (iter++ > maxIter) break;
@@ -220,7 +233,7 @@ function processCommands(commands, vars, state, maxIter = 500, obstacleManager =
           const newZ = startZ + dz * t;
 
           if (obstacleManager && !collisionOccurred) {
-            const collision = obstacleManager.checkCollision(new THREE.Vector3(newX, newZ, newY), 0.1);
+            const collision = obstacleManager.checkCollision(_v3.set(newX, newZ, newY), 0.1);
             if (collision) {
               state.collisions.push({ position: { x: newX, y: newY, z: newZ }, obstacle: collision.obstacle });
               collisionOccurred = true;

@@ -34,7 +34,7 @@ export class ObstacleImporter {
     if (Array.isArray(data)) return this._normalizeJSONList(data);
     if (data && Array.isArray(data.obstacles)) return this._normalizeJSONList(data.obstacles);
     if (data && (data.type === 'FeatureCollection' || data.type === 'Feature')) {
-      return this.parseGeoJSON(text);
+      return this._parseGeoJSON(data, {});
     }
     throw new Error('JSON must be an array of obstacles or an object with an "obstacles" array');
   }
@@ -108,7 +108,10 @@ export class ObstacleImporter {
   }
 
   parseGeoJSON(text, options = {}) {
-    const data = JSON.parse(text);
+    return this._parseGeoJSON(JSON.parse(text), options);
+  }
+
+  _parseGeoJSON(data, options = {}) {
     const scale = toNumber(options.scale, 1);
     const features = this._extractFeatures(data);
     const defs = [];
@@ -283,18 +286,14 @@ export class ObstacleImporter {
     for (let r = 1; r < rows.length; r++) {
       const row = rows[r];
       if (!row || row.length === 0 || (row.length === 1 && String(row[0]).trim() === '')) continue;
-      const rec = {};
-      header.forEach((h, idx) => {
-        if (idx < row.length) rec[h] = row[idx];
-      });
-      const def = this._csvRowToDef(rec, r);
+      const def = this._csvRowToDef(header, row, r);
       if (def) defs.push(def);
     }
     return defs;
   }
 
   _parseCSVrows(text) {
-    const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+    const lines = String(text).split(/\r\n|\r|\n/);
     const rows = [];
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -325,41 +324,47 @@ export class ObstacleImporter {
     return rows;
   }
 
-  _csvRowToDef(rec, idx) {
-    const typeRaw = (rec.type || '').toString().trim().toLowerCase();
+  _csvRowToDef(header, row, idx) {
+    const get = (h) => {
+      const i = header.indexOf(h);
+      return i >= 0 && i < row.length ? row[i] : undefined;
+    };
+    const typeRaw = (get('type') || '').toString().trim().toLowerCase();
     const type = OBSTACLE_TYPES.includes(typeRaw) ? typeRaw : 'wall';
-    const x = maybeNum(rec.x) ?? 0;
-    const z = maybeNum(rec.z) ?? 0;
-    const y = maybeNum(rec.y) ?? maybeNum(rec.altitude);
-    const height = maybeNum(rec.height);
-    const width = maybeNum(rec.width);
-    const depth = maybeNum(rec.depth);
-    const radius = maybeNum(rec.radius);
-    const name = (rec.name != null && String(rec.name).trim()) ? String(rec.name).trim() : undefined;
+    const x = maybeNum(get('x')) ?? 0;
+    const z = maybeNum(get('z')) ?? 0;
+    const y = maybeNum(get('y')) ?? maybeNum(get('altitude'));
+    const height = maybeNum(get('height'));
+    const width = maybeNum(get('width'));
+    const depth = maybeNum(get('depth'));
+    const radius = maybeNum(get('radius'));
+    const name = (get('name') != null && String(get('name')).trim()) ? String(get('name')).trim() : undefined;
     const rotation = [
-      maybeNum(rec.rotation_x) ?? 0,
-      maybeNum(rec.rotation_y) ?? 0,
-      maybeNum(rec.rotation_z) ?? 0
+      maybeNum(get('rotation_x')) ?? 0,
+      maybeNum(get('rotation_y')) ?? 0,
+      maybeNum(get('rotation_z')) ?? 0
     ];
 
     return this._grounded(type, x, z, { height, width, depth, radius, name, rotation, y });
   }
 
   parseOBJ(text) {
-    const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+    const lines = String(text).split(/\r\n|\r|\n/);
     const vertices = [];
     let currentName = null;
     let faceCount = 0;
 
     for (const raw of lines) {
       const line = raw.trim();
-      if (!line || line.startsWith('#')) continue;
-      const parts = line.split(/\s+/);
-      const tag = parts[0];
-      if (tag === 'v' && parts.length >= 4) {
-        vertices.push([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])]);
+      if (!line || line[0] === '#') continue;
+      const tag = line[0];
+      if (tag === 'v') {
+        const parts = line.split(/\s+/);
+        if (parts[0] === 'v' && parts.length >= 4) {
+          vertices.push([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])]);
+        }
       } else if (tag === 'o' || tag === 'g') {
-        currentName = parts.slice(1).join(' ').trim() || null;
+        currentName = line.split(/\s+/).slice(1).join(' ') || null;
       } else if (tag === 'f') {
         faceCount++;
       }
@@ -367,7 +372,7 @@ export class ObstacleImporter {
 
     if (vertices.length === 0) return [];
 
-    if (faceCount > 0) {
+    if (faceCount > 0 || vertices.length > 200) {
       const b = this._bbox(vertices);
       const cx = (b.minX + b.maxX) / 2;
       const cy = (b.minY + b.maxY) / 2;

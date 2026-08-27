@@ -1,13 +1,28 @@
 import { Scene3D } from './scene/Scene3D.js';
 import {
-  createCommand, getCommandCode, getCommandLabel,
+  createCommand, getCommandLabel,
   getCommandParams, createDefaultPlan, COMMAND_DEFS, isBlockCommand,
   getActiveDrone, getActiveCommands, addDrone, removeDrone, duplicateDrone, setFormation
 } from './commands/Commands.js';
 import { parseDroneScript } from './commands/ScriptParser.js';
 import { generateDroneScript, generateSwarmScript, generateAnimationScript } from './codegen/CodeGenerator.js';
-import { simulateCommands, simulateSwarm } from './scene/Simulator.js';
 import { ObstacleImporter } from './scene/ObstacleImporter.js';
+
+if ((navigator.hardwareConcurrency || 8) <= 4 ||
+  (navigator.deviceMemory || 8) <= 4 ||
+  matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.documentElement.classList.add('perf-mode');
+}
+
+const readoutPos = document.getElementById('readout-pos');
+const readoutHeading = document.getElementById('readout-heading');
+const statusAlt = document.getElementById('status-alt');
+const statusSpd = document.getElementById('status-spd');
+const statusBat = document.getElementById('status-bat');
+const statusHdg = document.getElementById('status-hdg');
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const consoleOutput = document.getElementById('console-output');
 
 const CMD_CATEGORIES = {
   takeoff: 'cat-flight', land: 'cat-flight', hover: 'cat-flight', flip: 'cat-flight',
@@ -33,11 +48,22 @@ let isFlying = false;
 let hasCollision = false;
 let chartExpanded = false;
 const TELEMETRY_BUFFER_SIZE = 300;
-let telemetryBuffer = [];
+const telemetryRing = new Float64Array(TELEMETRY_BUFFER_SIZE);
+let telemetryHead = 0;
+let telemetryCount = 0;
+let chartCanvas = null;
+let chartCtx = null;
+let chartW = 0;
+let chartH = 0;
+let chartAccent = null;
+let chartDim = null;
+let codegenT = null;
+let highlightTimer = null;
+let resizeT = null;
 const obstacleImporter = new ObstacleImporter();
 
 function log(msg, type = 'info') {
-  const el = document.getElementById('console-output');
+  const el = consoleOutput;
   if (!el) return;
   const line = document.createElement('div');
   line.className = 'console-line ' + type;
@@ -51,8 +77,8 @@ function init() {
   const canvas = document.getElementById('scene-canvas');
   scene3d = new Scene3D(canvas);
   scene3d.onPositionUpdate = (x, y, z, heading) => {
-    document.getElementById('readout-pos').textContent = `X: ${x.toFixed(2)} Y: ${y.toFixed(2)} Z: ${z.toFixed(2)}`;
-    document.getElementById('readout-heading').textContent = `HDG: ${Math.round(heading)}\u00B0`;
+    readoutPos.textContent = `X: ${x.toFixed(2)} Y: ${y.toFixed(2)} Z: ${z.toFixed(2)}`;
+    readoutHeading.textContent = `HDG: ${Math.round(heading)}\u00B0`;
   };
   scene3d.onLog = log;
   scene3d.onCollision = (collision, droneId) => {
@@ -80,6 +106,7 @@ function init() {
   });
 
   bindChartToggle();
+  setupChartCanvas();
   bindToolbar();
   bindModeToggle();
   bindDroneBar();
@@ -94,8 +121,6 @@ function init() {
   refresh();
   resetStatusMetrics();
 
-  setInterval(highlightCurrentCommand, 100);
-
   window.onerror = (msg, src, line, col, err) => {
     log(`Error: ${msg} (${src}:${line}:${col})`, 'error');
   };
@@ -104,39 +129,47 @@ function init() {
   });
 
   document.getElementById('btn-clear-console').addEventListener('click', () => {
-    document.getElementById('console-output').innerHTML = '';
+    consoleOutput.innerHTML = '';
   });
 
   window.addEventListener('resize', () => {
-    if (chartExpanded) drawTelemetryChart();
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => {
+      if (chartExpanded) {
+        chartW = 0;
+        chartH = 0;
+        drawTelemetryChart();
+      }
+    }, 150);
   });
 
   log('Drone Planner loaded', 'success');
 }
 
 function resetStatusMetrics() {
-  document.getElementById('status-alt').textContent = '0.00';
-  document.getElementById('status-spd').textContent = '0.00';
-  document.getElementById('status-bat').textContent = '100';
-  document.getElementById('status-hdg').textContent = '0';
+  statusAlt.textContent = '0.00';
+  statusSpd.textContent = '0.00';
+  statusBat.textContent = '100';
+  statusHdg.textContent = '0';
   isFlying = false;
   hasCollision = false;
   updateFlightStatus();
-  telemetryBuffer = [];
+  telemetryHead = 0;
+  telemetryCount = 0;
   drawTelemetryChart();
 }
 
 function updateStatusMetrics(telemetry) {
   if (!telemetry) return;
-  document.getElementById('status-alt').textContent = (telemetry.altitude_m || 0).toFixed(2);
-  document.getElementById('status-spd').textContent = (telemetry.speed || 0).toFixed(2);
-  document.getElementById('status-bat').textContent = Math.round(telemetry.batteryPercent || 100);
-  document.getElementById('status-hdg').textContent = Math.round(telemetry.heading || 0);
+  statusAlt.textContent = (telemetry.altitude_m || 0).toFixed(2);
+  statusSpd.textContent = (telemetry.speed || 0).toFixed(2);
+  statusBat.textContent = Math.round(telemetry.batteryPercent || 100);
+  statusHdg.textContent = Math.round(telemetry.heading || 0);
 }
 
 function updateFlightStatus() {
-  const dot = document.getElementById('status-dot');
-  const text = document.getElementById('status-text');
+  const dot = statusDot;
+  const text = statusText;
   dot.classList.remove('flying', 'collision');
   text.classList.remove('flying', 'collision');
 
@@ -154,11 +187,10 @@ function updateFlightStatus() {
 }
 
 function pushTelemetrySample(telemetry) {
-  if (!telemetry) return;
-  telemetryBuffer.push(telemetry.speed || 0);
-  if (telemetryBuffer.length > TELEMETRY_BUFFER_SIZE) {
-    telemetryBuffer = telemetryBuffer.slice(telemetryBuffer.length - TELEMETRY_BUFFER_SIZE);
-  }
+  if (!telemetry || !chartExpanded) return;
+  telemetryRing[telemetryHead] = telemetry.speed || 0;
+  telemetryHead = (telemetryHead + 1) % TELEMETRY_BUFFER_SIZE;
+  if (telemetryCount < TELEMETRY_BUFFER_SIZE) telemetryCount++;
   drawTelemetryChart();
 }
 
@@ -180,53 +212,78 @@ function getCssColor(variable) {
   return value || '#00d4ff';
 }
 
-function drawTelemetryChart() {
+function setupChartCanvas() {
   const canvas = document.getElementById('telemetry-chart');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+  chartCanvas = canvas;
+  chartCtx = canvas.getContext('2d');
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver((entries) => {
+      const rect = entries[0].contentRect;
+      if (rect.width === chartW && rect.height === chartH) return;
+      chartW = rect.width;
+      chartH = rect.height;
+      if (chartExpanded) drawTelemetryChart();
+    }).observe(chartCanvas);
+  }
+}
+
+function drawTelemetryChart() {
+  if (!chartExpanded || !chartCanvas || !chartCtx) return;
+  if (chartW === 0 || chartH === 0) {
+    const rect = chartCanvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    chartW = rect.width;
+    chartH = rect.height;
+  }
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) return;
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  const w = rect.width;
-  const h = rect.height;
+  const bw = Math.round(chartW * dpr);
+  const bh = Math.round(chartH * dpr);
+  if (chartCanvas.width !== bw || chartCanvas.height !== bh) {
+    chartCanvas.width = bw;
+    chartCanvas.height = bh;
+    chartCtx.scale(dpr, dpr);
+  }
+  const w = chartW;
+  const h = chartH;
+  const ctx = chartCtx;
 
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = 'rgba(13, 20, 31, 0.6)';
   ctx.fillRect(0, 0, w, h);
 
   const pad = { top: 18, right: 10, bottom: 18, left: 36 };
-  const chartW = w - pad.left - pad.right;
-  const chartH = h - pad.top - pad.bottom;
+  const chartW2 = w - pad.left - pad.right;
+  const chartH2 = h - pad.top - pad.bottom;
 
   ctx.strokeStyle = 'rgba(118, 131, 144, 0.2)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let i = 0; i <= 4; i++) {
-    const y = pad.top + chartH * (i / 4);
+    const y = pad.top + chartH2 * (i / 4);
     ctx.moveTo(pad.left, y);
-    ctx.lineTo(pad.left + chartW, y);
+    ctx.lineTo(pad.left + chartW2, y);
   }
   for (let i = 0; i <= 5; i++) {
-    const x = pad.left + chartW * (i / 5);
+    const x = pad.left + chartW2 * (i / 5);
     ctx.moveTo(x, pad.top);
-    ctx.lineTo(x, pad.top + chartH);
+    ctx.lineTo(x, pad.top + chartH2);
   }
   ctx.stroke();
 
-  if (telemetryBuffer.length < 2) {
+  if (telemetryCount < 2) {
     ctx.fillStyle = 'rgba(118, 131, 144, 0.6)';
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('No telemetry data', pad.left + chartW / 2, pad.top + chartH / 2);
+    ctx.fillText('No telemetry data', pad.left + chartW2 / 2, pad.top + chartH2 / 2);
     return;
   }
 
   let minV = Infinity;
   let maxV = -Infinity;
-  for (const v of telemetryBuffer) {
+  const start = (telemetryHead - telemetryCount + TELEMETRY_BUFFER_SIZE) % TELEMETRY_BUFFER_SIZE;
+  for (let i = 0; i < telemetryCount; i++) {
+    const v = telemetryRing[(start + i) % TELEMETRY_BUFFER_SIZE];
     if (v < minV) minV = v;
     if (v > maxV) maxV = v;
   }
@@ -236,26 +293,29 @@ function drawTelemetryChart() {
   ctx.strokeStyle = 'rgba(118, 131, 144, 0.5)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(pad.left, pad.top + chartH);
-  ctx.lineTo(pad.left + chartW, pad.top + chartH);
+  ctx.moveTo(pad.left, pad.top + chartH2);
+  ctx.lineTo(pad.left + chartW2, pad.top + chartH2);
   ctx.stroke();
 
-  const accentColor = getCssColor('--accent');
-  ctx.strokeStyle = accentColor;
+  if (chartAccent === null) {
+    chartAccent = getCssColor('--accent');
+    chartDim = getCssColor('--text-dim');
+  }
+  ctx.strokeStyle = chartAccent;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  const n = telemetryBuffer.length;
+  const n = telemetryCount;
   for (let i = 0; i < n; i++) {
-    const x = pad.left + chartW * (i / (n - 1));
-    const y = pad.top + chartH * (1 - (telemetryBuffer[i] - minV) / (maxV - minV));
+    const x = pad.left + chartW2 * (i / (n - 1));
+    const y = pad.top + chartH2 * (1 - (telemetryRing[(start + i) % TELEMETRY_BUFFER_SIZE] - minV) / (maxV - minV));
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
 
-  ctx.fillStyle = accentColor;
-  const lastX = pad.left + chartW;
-  const lastY = pad.top + chartH * (1 - (telemetryBuffer[n - 1] - minV) / (maxV - minV));
+  ctx.fillStyle = chartAccent;
+  const lastX = pad.left + chartW2;
+  const lastY = pad.top + chartH2 * (1 - (telemetryRing[(start + n - 1) % TELEMETRY_BUFFER_SIZE] - minV) / (maxV - minV));
   ctx.beginPath();
   ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
   ctx.fill();
@@ -266,12 +326,12 @@ function drawTelemetryChart() {
   ctx.textBaseline = 'middle';
   for (let i = 0; i <= 4; i++) {
     const v = minV + (maxV - minV) * (1 - i / 4);
-    ctx.fillText(v.toFixed(1), pad.left - 6, pad.top + chartH * (i / 4));
+    ctx.fillText(v.toFixed(1), pad.left - 6, pad.top + chartH2 * (i / 4));
   }
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillStyle = getCssColor('--text-dim');
+  ctx.fillStyle = chartDim;
   ctx.font = '9px Inter, sans-serif';
   ctx.fillText('Speed (m/s)', pad.left, 4);
 }
@@ -357,10 +417,10 @@ function importObstacleText(text, filename) {
 function renderObstacleList() {
   const list = document.getElementById('obstacle-list');
   if (!list) return;
-  
+
   list.innerHTML = '';
   const obstacles = scene3d.getObstacles();
-  
+
   obstacles.forEach(obs => {
     const item = document.createElement('div');
     item.className = 'obstacle-item';
@@ -371,14 +431,14 @@ function renderObstacleList() {
       </span>
       <button class="obs-delete" title="Remove obstacle">X</button>
     `;
-    
+
     item.querySelector('.obs-delete').addEventListener('click', (e) => {
       e.stopPropagation();
       scene3d.removeObstacle(obs.id);
       renderObstacleList();
       log(`Obstacle removed: ${obs.name}`);
     });
-    
+
     list.appendChild(item);
   });
 }
@@ -626,13 +686,16 @@ function bindPlayback() {
     scene3d.play();
     isFlying = true;
     hasCollision = false;
-    telemetryBuffer = [];
+    telemetryHead = 0;
+    telemetryCount = 0;
+    startHighlightTimer();
     updateFlightStatus();
   });
 
   document.getElementById('btn-stop').addEventListener('click', () => {
     scene3d.stop();
     isFlying = false;
+    stopHighlightTimer();
     updateFlightStatus();
     log('Playback stopped', 'warn');
   });
@@ -641,6 +704,7 @@ function bindPlayback() {
     scene3d.reset();
     isFlying = false;
     hasCollision = false;
+    stopHighlightTimer();
     updateFlightStatus();
     resetStatusMetrics();
     log('Playback reset');
@@ -673,10 +737,10 @@ function bindCopyCode() {
       if (activeDrone) {
         activeDrone.commands = commands;
         refresh();
-        logMessage('Code applied successfully!', 'success');
+        log('Code applied successfully!', 'success');
       }
     } catch (e) {
-      logMessage(`Error applying code: ${e.message}`, 'error');
+      log(`Error applying code: ${e.message}`, 'error');
     }
   });
 }
@@ -806,7 +870,7 @@ function renderCommandsRecursive(commands, container, depth, parentPath) {
             el.value = cmd.params[paramDef.key] || paramDef.default;
             el.addEventListener('input', () => {
               cmd.params[paramDef.key] = el.value;
-              updateCodePreview();
+              debounceCodegen(updateCodePreview);
             });
             el.addEventListener('blur', () => renderCommandList());
           } else {
@@ -818,7 +882,7 @@ function renderCommandsRecursive(commands, container, depth, parentPath) {
             if (paramDef.step) el.step = paramDef.step;
             el.addEventListener('input', () => {
               cmd.params[paramDef.key] = parseFloat(el.value) || paramDef.default;
-              updateCodePreview();
+              debounceCodegen(updateCodePreview);
             });
             el.addEventListener('blur', () => renderCommandList());
           }
@@ -913,6 +977,22 @@ function showCmdOptions(cmd) {
   }
 }
 
+function debounceCodegen(fn) {
+  clearTimeout(codegenT);
+  codegenT = setTimeout(fn, 150);
+}
+
+function startHighlightTimer() {
+  if (highlightTimer !== null) return;
+  highlightTimer = setInterval(highlightCurrentCommand, 100);
+}
+
+function stopHighlightTimer() {
+  if (highlightTimer === null) return;
+  clearInterval(highlightTimer);
+  highlightTimer = null;
+}
+
 let currentHighlightIndex = -1;
 
 function highlightCurrentCommand() {
@@ -927,7 +1007,7 @@ function highlightCurrentCommand() {
   if (code) {
     const lines = code.split('\n');
     if (newIndex >= 0 && newIndex < lines.length) {
-      codeOutput.value = lines.map((line, i) => 
+      codeOutput.value = lines.map((line, i) =>
         i === newIndex ? `> ${line}` : line
       ).join('\n');
     }

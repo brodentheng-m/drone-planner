@@ -21,10 +21,12 @@ export class Scene3D {
     this.camera = new THREE.PerspectiveCamera(50, this.width / this.height, 0.1, 100);
     this.camera.position.set(0, 1, 2);
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const perfMode = document.documentElement.classList.contains('perf-mode');
+
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
     this.renderer.setSize(this.width, this.height);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perfMode ? 1 : 1.5));
+    this.renderer.shadowMap.enabled = !perfMode;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
 
@@ -34,6 +36,10 @@ export class Scene3D {
     this.controls.target.set(0, 0.15, 0);
     this.controls.maxPolarAngle = Math.PI / 2.1;
     this.controls.enabled = true;
+    this.controls.addEventListener('change', () => { this.needsRender = true; });
+
+    this.needsRender = true;
+    this._scratchVec = new THREE.Vector3();
 
     this.cameraMode = 1;
     this._camOffset = null;
@@ -114,7 +120,7 @@ export class Scene3D {
     const sun = new THREE.DirectionalLight(0xfff0d0, 1.4);
     sun.position.set(10, 18, 6);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.camera.near = 0.5;
     sun.shadow.camera.far = 40;
     sun.shadow.camera.left = -12;
@@ -124,18 +130,6 @@ export class Scene3D {
     sun.shadow.bias = -0.0005;
     sun.shadow.normalBias = 0.02;
     this.scene.add(sun);
-
-    const fill = new THREE.DirectionalLight(0x7090cc, 0.5);
-    fill.position.set(-8, 10, -5);
-    this.scene.add(fill);
-
-    const rim = new THREE.DirectionalLight(0xd0e0ff, 0.35);
-    rim.position.set(-4, 12, 12);
-    this.scene.add(rim);
-
-    const ground = new THREE.DirectionalLight(0x554433, 0.2);
-    ground.position.set(0, -5, 0);
-    this.scene.add(ground);
 
     const key = new THREE.PointLight(0xffeedd, 0.3, 30);
     key.position.set(5, 8, 0);
@@ -254,6 +248,10 @@ export class Scene3D {
     if (!this.droneMeshes[id]) {
       const mesh = createDroneMesh();
       mesh.position.set(0, 0.05, 0);
+      mesh.userData.propellers = [];
+      mesh.traverse((c) => {
+        if (c.userData.isPropeller) mesh.userData.propellers.push(c);
+      });
       this.scene.add(mesh);
       this.droneMeshes[id] = mesh;
 
@@ -277,6 +275,7 @@ export class Scene3D {
   _removeDroneMesh(id) {
     if (this.droneMeshes[id]) {
       this.scene.remove(this.droneMeshes[id]);
+      this.disposeObject3D(this.droneMeshes[id]);
       delete this.droneMeshes[id];
     }
     if (this.droneTrails[id]) {
@@ -287,6 +286,7 @@ export class Scene3D {
   }
 
    setSwarm(drones) {
+    this.needsRender = true;
     const activeIds = new Set(drones.map(d => d.id));
 
     for (const id of Object.keys(this.droneMeshes)) {
@@ -333,6 +333,7 @@ export class Scene3D {
   setActiveDroneId(id) {
     this.activeDroneId = id;
     this._buildWaypoints(id);
+    this.needsRender = true;
   }
 
   getRoutePoints(droneId) {
@@ -396,16 +397,19 @@ export class Scene3D {
       : 0x00d4ff);
 
     const geometry = new THREE.SphereGeometry(0.045, 16, 16);
-    const material = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: color,
-      emissiveIntensity: 0.4,
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
       transparent: true,
       opacity: 0.85
     });
 
     points.forEach((pt, i) => {
-      const mesh = new THREE.Mesh(geometry, material.clone());
+      let meshMat = material;
+      if (color.getHex() !== 0xffffff) {
+        meshMat = material.clone();
+        meshMat.color.copy(color);
+      }
+      const mesh = new THREE.Mesh(geometry, meshMat);
       mesh.position.set(pt.x, pt.y + 0.05, pt.z);
       mesh.userData = { isWaypoint: true, commandIndex: pt.commandIndex, waypointIndex: i };
       this.waypointGroup.add(mesh);
@@ -447,6 +451,7 @@ export class Scene3D {
     if (mode === 1) {
       this.controls.target.set(0, 0.15, 0);
     }
+    this.needsRender = true;
   }
 
   play() {
@@ -471,6 +476,7 @@ export class Scene3D {
       totalFrames = Math.max(totalFrames, this.swarmResults[id].positions.length);
     }
     if (this.onLog) this.onLog(`Playing swarm: ${Object.keys(this.swarmResults).length} drones, ${totalFrames} frames`, 'success');
+    this.needsRender = true;
   }
 
   stop() {
@@ -486,6 +492,7 @@ export class Scene3D {
         this.droneMeshes[id].position.set(p.x, p.z, p.y);
       }
     }
+    this.needsRender = true;
   }
 
   reset() { this.stop(); }
@@ -508,14 +515,17 @@ export class Scene3D {
   }
 
   loadBaseObstacles() {
+    this.needsRender = true;
     return this.obstacleManager.loadBaseObstacles();
   }
 
   clearObstacles() {
+    this.needsRender = true;
     this.obstacleManager.clearAll();
   }
 
   importObstacles(obstacles) {
+    this.needsRender = true;
     return this.obstacleManager.importObstacles(obstacles);
   }
 
@@ -524,6 +534,7 @@ export class Scene3D {
   }
 
   removeObstacle(id) {
+    this.needsRender = true;
     return this.obstacleManager.removeObstacle(id);
   }
 
@@ -538,12 +549,14 @@ export class Scene3D {
   setBoundary(bounds) {
     const b = this.obstacleManager.setBoundary(bounds);
     this.renderBoundary();
+    this.needsRender = true;
     return b;
   }
 
   setBoundaryVisible(visible) {
     this.boundaryVisible = !!visible;
     if (this.boundaryGroup) this.boundaryGroup.visible = this.boundaryVisible;
+    this.needsRender = true;
   }
 
   renderBoundary() {
@@ -571,6 +584,29 @@ export class Scene3D {
     }
     this.boundaryGroup.add(helper);
     this.boundaryGroup.visible = this.boundaryVisible;
+    this.needsRender = true;
+  }
+
+  disposeObject3D(obj) {
+    obj.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (Array.isArray(o.material)) {
+          o.material.forEach((m) => {
+            if (m.map) m.map.dispose();
+            m.dispose();
+          });
+        } else {
+          if (o.material.map) o.material.map.dispose();
+          o.material.dispose();
+        }
+      }
+    });
+  }
+
+  dispose() {
+    this.disposeObject3D(this.scene);
+    this.renderer.dispose();
   }
 
   getCurrentCommandIndex() {
@@ -605,7 +641,11 @@ export class Scene3D {
 
     this.controls.update();
 
+    if (!this.needsRender) return;
+    this.needsRender = false;
+
     if (this.isPlaying && this.swarmResults) {
+      this.needsRender = true;
       const dt = 0.033 * this.speed;
       this.simTime += dt;
 
@@ -651,21 +691,23 @@ export class Scene3D {
         mesh.rotation.order = 'YXZ';
         mesh.rotation.set(pitch, yaw, roll);
 
-        mesh.children.forEach(c => {
-          if (c.userData.isPropeller) c.rotation.y += 50 * 0.033;
-        });
+        const propellers = mesh.userData.propellers;
+        for (let pi = 0; pi < propellers.length; pi++) {
+          propellers[pi].rotation.y += 50 * 0.033;
+        }
 
         if (p.led !== undefined && p.led !== this.droneLeds[id]) {
           this.droneLeds[id] = p.led;
           setAllLeds(mesh, p.led);
         }
 
+         this._scratchVec.set(p.x, p.z, p.y);
          if (this.droneTrails[id]) {
-           this.droneTrails[id].addPoint(new THREE.Vector3(p.x, p.z, p.y));
+           this.droneTrails[id].addPoint(this._scratchVec);
          }
 
          if (this.onCollision) {
-           const collision = this.checkCollision(new THREE.Vector3(p.x, p.z, p.y), 0.1);
+           const collision = this.checkCollision(this._scratchVec, 0.1);
            if (collision) {
              this.onCollision(collision, id);
            }
@@ -708,5 +750,8 @@ export class Scene3D {
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.width, this.height);
+    const perfMode = document.documentElement.classList.contains('perf-mode');
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, perfMode ? 1 : 1.5));
+    this.needsRender = true;
   }
 }

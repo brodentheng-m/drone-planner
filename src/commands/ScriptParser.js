@@ -16,9 +16,10 @@ export function parseDroneScript(text) {
     while (i < processed.length) {
       const { indent, content } = processed[i];
 
+      if (!content) { i++; continue; }
       if (indent < endIndent) break;
       if (indent > endIndent) { i++; continue; }
-      if (!content || content.startsWith('#') || content.startsWith('from ') || content.startsWith('import ')) { i++; continue; }
+      if (content.startsWith('#') || content.startsWith('from ') || content.startsWith('import ')) { i++; continue; }
 
       const cmd = parseLine(content);
       if (cmd) {
@@ -47,152 +48,206 @@ export function parseDroneScript(text) {
   return parseLevel(0, 0);
 }
 
+function num(v, d) {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : d;
+}
+
+function int(v, d) {
+  const n = parseInt(v);
+  return Number.isFinite(n) ? n : d;
+}
+
+function speedArg(args, d) {
+  const s = args.match(/speed=(\d+)/);
+  return s ? parseInt(s[1]) : d;
+}
+
+function secsArg(args, d) {
+  const s = args.match(/seconds=([\d.]+)/);
+  return s ? parseFloat(s[1]) : d;
+}
+
+function dirArg(args) {
+  const d = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
+  return d ? (d[1] === '-1' || d[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise';
+}
+
 function parseLine(line) {
   let m;
+  const head = line.match(/^(\w+)/);
+  const word = head ? head[1] : '';
 
-  if ((m = line.match(/^if\s+(.+):$/))) return { type: 'if_block', params: { condition: m[1] }, children: [] };
-  if ((m = line.match(/^elif\s+(.+):$/))) return { type: 'elif_block', params: { condition: m[1] }, children: [] };
-  if (line === 'else:') return { type: 'else_block', params: {}, children: [] };
-  if ((m = line.match(/^while\s+(.+):$/))) return { type: 'while_block', params: { condition: m[1] }, children: [] };
-  if ((m = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\s*,\s*(\d+)\s*,\s*(-?\d+)\)$/))) {
-    return { type: 'for_block', params: { var: m[1], start: parseInt(m[2]), end_val: parseInt(m[3]), step: parseInt(m[4]) }, children: [] };
+  if (word === 'if' && (m = line.match(/^if\s+(.+):$/))) return { type: 'if_block', params: { condition: m[1] }, children: [] };
+  if (word === 'elif' && (m = line.match(/^elif\s+(.+):$/))) return { type: 'elif_block', params: { condition: m[1] }, children: [] };
+  if (word === 'else' && line === 'else:') return { type: 'else_block', params: {}, children: [] };
+  if (word === 'while' && (m = line.match(/^while\s+(.+):$/))) return { type: 'while_block', params: { condition: m[1] }, children: [] };
+  if (word === 'for') {
+    if ((m = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\s*,\s*(\d+)\s*,\s*(-?\d+)\)$/))) {
+      return { type: 'for_block', params: { var: m[1], start: parseInt(m[2]), end_val: parseInt(m[3]), step: parseInt(m[4]) }, children: [] };
+    }
+    if ((m = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\s*,\s*(\d+)\)$/))) {
+      return { type: 'for_block', params: { var: m[1], start: parseInt(m[2]), end_val: parseInt(m[3]), step: 1 }, children: [] };
+    }
+    if ((m = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\)$/))) {
+      return { type: 'for_block', params: { var: m[1], start: 0, end_val: parseInt(m[2]), step: 1 }, children: [] };
+    }
   }
-  if ((m = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\s*,\s*(\d+)\)$/))) {
-    return { type: 'for_block', params: { var: m[1], start: parseInt(m[2]), end_val: parseInt(m[3]), step: 1 }, children: [] };
-  }
-  if ((m = line.match(/^for\s+(\w+)\s+in\s+range\((\d+)\)$/))) {
-    return { type: 'for_block', params: { var: m[1], start: 0, end_val: parseInt(m[2]), step: 1 }, children: [] };
-  }
-  if (line === 'break') return { type: 'break_cmd', params: {} };
+  if (word === 'break' && line === 'break') return { type: 'break_cmd', params: {} };
+  if (word === 'def' && (m = line.match(/^def\s+(\w+)\(\):$/))) return { type: 'func_def', params: { name: m[1] }, children: [] };
+  if (word && line === word + '()') return { type: 'func_call', params: { name: word } };
+  if (word === 'return' && (m = line.match(/^return\s+(.+)$/))) return { type: 'return_val', params: { value: m[1] } };
+  if (word && line.indexOf('=') !== -1 && (m = line.match(/^(\w+)\s*=\s*(.+)$/))) return { type: 'var_declare', params: { name: m[1], value: m[2] } };
+  if (word && line.indexOf('=') !== -1 && (m = line.match(/^(\w+)\s*(\+=|-=|\*=|\/=)\s*(.+)$/))) return { type: 'set_var', params: { name: m[1], op: m[2], value: m[3] } };
+  if (word === 'print' && (m = line.match(/^print\((.+)\)$/))) return { type: 'print_var', params: { value: m[1] } };
+  if (word && line.indexOf('.append(') !== -1 && (m = line.match(/^(\w+)\.append\((.+)\)$/))) return { type: 'list_append', params: { name: m[1], value: m[2] } };
+  if (word === 'time' && (m = line.match(/^time\.sleep\((.+)\)$/))) return { type: 'time_sleep', params: { dur: num(m[1], 1) } };
 
-  if ((m = line.match(/^def\s+(\w+)\(\):$/))) return { type: 'func_def', params: { name: m[1] }, children: [] };
-  if ((m = line.match(/^(\w+)\(\)$/))) return { type: 'func_call', params: { name: m[1] } };
-  if ((m = line.match(/^return\s+(.+)$/))) return { type: 'return_val', params: { value: m[1] } };
-
-  if ((m = line.match(/^(\w+)\s*=\s*(.+)$/))) return { type: 'var_declare', params: { name: m[1], value: m[2] } };
-  if ((m = line.match(/^(\w+)\s*(\+=|-=|\*=|\/=)\s*(.+)$/))) return { type: 'set_var', params: { name: m[1], op: m[2], value: m[3] } };
-  if ((m = line.match(/^print\((.+)\)$/))) return { type: 'print_var', params: { value: m[1] } };
-
-  if ((m = line.match(/^(\w+)\s*=\s*\[(.+)\]$/))) return { type: 'list_declare', params: { name: m[1], values: m[2] } };
-  if ((m = line.match(/^(\w+)\.append\((.+)\)$/))) return { type: 'list_append', params: { name: m[1], value: m[2] } };
-  if ((m = line.match(/^(\w+)\s*=\s*(\w+)\[(.+)\]$/))) return { type: 'list_get', params: { var: m[1], list_name: m[2], index: m[3] } };
-
-  if ((m = line.match(/^(\w+)\s*=\s*time\.time\(\)$/))) return { type: 'timer_start', params: { name: m[1] } };
-  if ((m = line.match(/^(\w+)\s*=\s*time\.time\(\)\s*-\s*(\w+)$/))) return { type: 'timer_elapsed', params: { var: m[1], name: m[2] } };
-  if ((m = line.match(/^time\.sleep\((.+)\)$/))) return { type: 'time_sleep', params: { dur: parseFloat(m[1]) || 1 } };
-
-  if ((m = line.match(/drone\.takeoff\(\)/))) return { type: 'takeoff', params: {} };
-  if ((m = line.match(/drone\.land\(\)/))) return { type: 'land', params: {} };
-  if ((m = line.match(/drone\.emergency_stop\(\)/))) return { type: 'emergency_stop', params: {} };
-  if ((m = line.match(/drone\.stop_motors\(\)/))) return { type: 'stop_motors', params: {} };
-  if ((m = line.match(/drone\.hover\((.+)\)/))) return { type: 'hover', params: { dur: parseFloat(m[1]) || 1 } };
-  if ((m = line.match(/drone\.flip\(["'](\w+)["']\)/))) return { type: 'flip', params: { dir: m[1] } };
-  if ((m = line.match(/drone\.go\(["'](\w+)["']\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\)/))) {
-    return { type: 'go', params: { dir: m[1], power: parseInt(m[2]) || 50, dur: parseFloat(m[3]) || 1 } };
-  }
-  if ((m = line.match(/drone\.move_forward\((\d+)(?:\s*,\s*speed=(\d+))?\)/))) {
-    return { type: 'move_forward', params: { dist: parseFloat(m[1]) || 50, speed: parseInt(m[2]) || 50 } };
-  }
-  if ((m = line.match(/drone\.move_backward\((\d+)(?:\s*,\s*speed=(\d+))?\)/))) {
-    return { type: 'move_backward', params: { dist: parseFloat(m[1]) || 50, speed: parseInt(m[2]) || 50 } };
-  }
-  if ((m = line.match(/drone\.move_left\((\d+)(?:\s*,\s*speed=(\d+))?\)/))) {
-    return { type: 'move_left', params: { dist: parseFloat(m[1]) || 50, speed: parseInt(m[2]) || 50 } };
-  }
-  if ((m = line.match(/drone\.move_right\((\d+)(?:\s*,\s*speed=(\d+))?\)/))) {
-    return { type: 'move_right', params: { dist: parseFloat(m[1]) || 50, speed: parseInt(m[2]) || 50 } };
-  }
-  if ((m = line.match(/drone\.turn_left\((.+)\)/))) return { type: 'turn_left', params: { deg: parseInt(m[1]) || 90 } };
-  if ((m = line.match(/drone\.turn_right\((.+)\)/))) return { type: 'turn_right', params: { deg: parseInt(m[1]) || 90 } };
-  if ((m = line.match(/drone\.turn_degree\(([^,]+)(?:\s*,\s*timeout=([^,]+))?(?:\s*,\s*p_value=([^,]+))?\)/))) {
-    return { type: 'turn_degree', params: { deg: parseInt(m[1]) || 90, timeout: parseFloat(m[2]) || 3, p_value: parseInt(m[3]) || 10 } };
-  }
-  if ((m = line.match(/drone\.circle\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'circle', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 75, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.circle_turn\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'circle_turn', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 75, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.square\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const secsMatch = args.match(/seconds=([\d.]+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'square', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 60, secs: secsMatch ? parseFloat(secsMatch[1]) : 1, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.square_turn\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const secsMatch = args.match(/seconds=([\d.]+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'square_turn', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 60, secs: secsMatch ? parseFloat(secsMatch[1]) : 1, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.triangle\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const secsMatch = args.match(/seconds=([\d.]+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'triangle', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 60, secs: secsMatch ? parseFloat(secsMatch[1]) : 1, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.triangle_turn\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const secsMatch = args.match(/seconds=([\d.]+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'triangle_turn', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 60, secs: secsMatch ? parseFloat(secsMatch[1]) : 1, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.spiral\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const directionMatch = args.match(/direction=(-?\d+|clockwise|counter-clockwise)/);
-    return { type: 'spiral', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 50, dir: directionMatch ? (directionMatch[1] === '-1' || directionMatch[1] === 'counter-clockwise' ? 'counter-clockwise' : 'clockwise') : 'clockwise' } };
-  }
-  if ((m = line.match(/drone\.sway\(([^)]*)\)/))) {
-    const args = m[1];
-    const speedMatch = args.match(/speed=(\d+)/);
-    const dirMatch = args.match(/direction=["']?([^"']+)["']?/);
-    return { type: 'sway', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 50, dir: dirMatch ? dirMatch[1] : 'forward-back' } };
-  }
-  if ((m = line.match(/drone\.keep_distance\(([^)]*)\)/))) {
-    const args = m[1].split(',').map(a => a.trim());
-    return { type: 'keep_distance', params: { dist: parseFloat(args[0]) || 50, speed: parseInt(args[1]) || 50 } };
-  }
-  if ((m = line.match(/drone\.avoid_wall\(([^)]*)\)/))) {
-    const args = m[1].split(',').map(a => a.trim());
-    return { type: 'avoid_wall', params: { dist: parseFloat(args[0]) || 50, speed: parseInt(args[1]) || 50 } };
-  }
-  if ((m = line.match(/(\w+)\s*=\s*drone\.detect_wall\(\)/))) return { type: 'detect_wall', params: { var: m[1] } };
-
-  if ((m = line.match(/drone\.set_led\(["'](\w+)["']\)/))) {
-    return { type: 'led', params: { color: m[1] || 'green' } };
-  }
-  if (line === 'drone.set_led("off")' || line === "drone.set_led('off')") return { type: 'led_off', params: {} };
-  if (line === 'drone.random_color()') return { type: 'random_led', params: {} };
-  if ((m = line.match(/drone\.set_buzzer\((\d+)\s*,\s*([\d.]+)\)/))) {
-    return { type: 'buzzer', params: { freq: parseInt(m[1]) || 440, dur: parseFloat(m[2]) || 0.5 } };
-  }
-  if ((m = line.match(/drone\.set_drone_LED\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+))?\)/))) {
-    return { type: 'led', params: { r: parseInt(m[1]) || 0, g: parseInt(m[2]) || 255, b: parseInt(m[3]) || 0, brightness: parseInt(m[4]) || 100 } };
-  }
-  if (line === 'drone.drone_LED_off()') return { type: 'led_off', params: {} };
-  if ((m = line.match(/drone\.drone_buzzer\(([^,]+)\s*,\s*(\d+)\)/))) {
-    return { type: 'buzzer', params: { note: m[1], dur: parseInt(m[2]) || 500 } };
+  if (line.indexOf('drone.') !== -1) {
+    if ((m = line.match(/drone\.takeoff\(\)/))) return { type: 'takeoff', params: {} };
+    if ((m = line.match(/drone\.land\(\)/))) return { type: 'land', params: {} };
+    if ((m = line.match(/drone\.emergency_stop\(\)/))) return { type: 'emergency_stop', params: {} };
+    if ((m = line.match(/drone\.stop_motors\(\)/))) return { type: 'stop_motors', params: {} };
+    if ((m = line.match(/drone\.hover\((.+)\)/))) return { type: 'hover', params: { dur: num(m[1], 1) } };
   }
 
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_battery\(\)/))) return { type: 'get_battery', params: { var: m[1] } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_height\([^)]*\)/))) return { type: 'get_height', params: { var: m[1], unit: 'cm' } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_front_range\([^)]*\)/))) return { type: 'get_front_range', params: { var: m[1], unit: 'cm' } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_bottom_range\([^)]*\)/))) return { type: 'get_bottom_range', params: { var: m[1], unit: 'cm' } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_front_color\([^)]*\)/))) return { type: 'get_front_color', params: { var: m[1], kind: 'name' } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_back_color\([^)]*\)/))) return { type: 'get_back_color', params: { var: m[1], kind: 'name' } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_temperature\([^)]*\)/))) return { type: 'get_temperature', params: { var: m[1], unit: 'C' } };
-  if ((m = line.match(/(\w+)\s*=\s*drone\.get_distance\([^)]*\)/))) return { type: 'get_front_range', params: { var: m[1], unit: 'cm' } };
-
+  if (word === 'drone') {
+    const c = line.match(/^drone\.(\w+)\s*\(/);
+    if (!c) return null;
+    switch (c[1]) {
+      case 'flip': {
+        if ((m = line.match(/^drone\.flip\(["'](\w+)["']\)/))) return { type: 'flip', params: { dir: m[1] } };
+        return null;
+      }
+      case 'go': {
+        if ((m = line.match(/^drone\.go\(["'](\w+)["']\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\)/))) {
+          return { type: 'go', params: { dir: m[1], power: int(m[2], 50), dur: num(m[3], 1) } };
+        }
+        return null;
+      }
+      case 'move_forward':
+      case 'move_backward':
+      case 'move_left':
+      case 'move_right': {
+        if ((m = line.match(/^drone\.move_(?:forward|backward|left|right)\((\d+)(?:\s*,\s*speed=(\d+))?\)/))) {
+          return { type: c[1], params: { dist: num(m[1], 50), speed: int(m[2], 50) } };
+        }
+        return null;
+      }
+      case 'turn_left': {
+        if ((m = line.match(/^drone\.turn_left\((.+)\)/))) return { type: 'turn_left', params: { deg: int(m[1], 90) } };
+        return null;
+      }
+      case 'turn_right': {
+        if ((m = line.match(/^drone\.turn_right\((.+)\)/))) return { type: 'turn_right', params: { deg: int(m[1], 90) } };
+        return null;
+      }
+      case 'turn_degree': {
+        if ((m = line.match(/^drone\.turn_degree\(([^,]+)(?:\s*,\s*timeout=([^,]+))?(?:\s*,\s*p_value=([^,]+))?\)/))) {
+          return { type: 'turn_degree', params: { deg: int(m[1], 90), timeout: num(m[2], 3), p_value: int(m[3], 10) } };
+        }
+        return null;
+      }
+      case 'circle': {
+        if ((m = line.match(/^drone\.circle\(([^)]*)\)/))) {
+          return { type: 'circle', params: { speed: speedArg(m[1], 75), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'circle_turn': {
+        if ((m = line.match(/^drone\.circle_turn\(([^)]*)\)/))) {
+          return { type: 'circle_turn', params: { speed: speedArg(m[1], 75), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'square': {
+        if ((m = line.match(/^drone\.square\(([^)]*)\)/))) {
+          return { type: 'square', params: { speed: speedArg(m[1], 60), secs: secsArg(m[1], 1), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'square_turn': {
+        if ((m = line.match(/^drone\.square_turn\(([^)]*)\)/))) {
+          return { type: 'square_turn', params: { speed: speedArg(m[1], 60), secs: secsArg(m[1], 1), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'triangle': {
+        if ((m = line.match(/^drone\.triangle\(([^)]*)\)/))) {
+          return { type: 'triangle', params: { speed: speedArg(m[1], 60), secs: secsArg(m[1], 1), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'triangle_turn': {
+        if ((m = line.match(/^drone\.triangle_turn\(([^)]*)\)/))) {
+          return { type: 'triangle_turn', params: { speed: speedArg(m[1], 60), secs: secsArg(m[1], 1), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'spiral': {
+        if ((m = line.match(/^drone\.spiral\(([^)]*)\)/))) {
+          return { type: 'spiral', params: { speed: speedArg(m[1], 50), dir: dirArg(m[1]) } };
+        }
+        return null;
+      }
+      case 'sway': {
+        if ((m = line.match(/^drone\.sway\(([^)]*)\)/))) {
+          const args = m[1];
+          const speedMatch = args.match(/speed=(\d+)/);
+          const dirMatch = args.match(/direction=["']?([^"']+)["']?/);
+          return { type: 'sway', params: { speed: speedMatch ? parseInt(speedMatch[1]) : 50, dir: dirMatch ? dirMatch[1] : 'forward-back' } };
+        }
+        return null;
+      }
+      case 'keep_distance': {
+        if ((m = line.match(/^drone\.keep_distance\(([^)]*)\)/))) {
+          const args = m[1].split(',').map(a => a.trim());
+          return { type: 'keep_distance', params: { dist: num(args[0], 50), speed: int(args[1], 50) } };
+        }
+        return null;
+      }
+      case 'avoid_wall': {
+        if ((m = line.match(/^drone\.avoid_wall\(([^)]*)\)/))) {
+          const args = m[1].split(',').map(a => a.trim());
+          return { type: 'avoid_wall', params: { dist: num(args[0], 50), speed: int(args[1], 50) } };
+        }
+        return null;
+      }
+      case 'set_led': {
+        if ((m = line.match(/^drone\.set_led\(["'](\w+)["']\)/))) {
+          return { type: 'led', params: { color: m[1] || 'green' } };
+        }
+        return null;
+      }
+      case 'random_color': {
+        if (line === 'drone.random_color()') return { type: 'random_led', params: {} };
+        return null;
+      }
+      case 'set_buzzer': {
+        if ((m = line.match(/^drone\.set_buzzer\((\d+)\s*,\s*([\d.]+)\)/))) {
+          return { type: 'buzzer', params: { freq: int(m[1], 440), dur: num(m[2], 0.5) } };
+        }
+        return null;
+      }
+      case 'set_drone_LED': {
+        if ((m = line.match(/^drone\.set_drone_LED\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(\d+))?\)/))) {
+          return { type: 'led', params: { r: int(m[1], 0), g: int(m[2], 255), b: int(m[3], 0), brightness: int(m[4], 100) } };
+        }
+        return null;
+      }
+      case 'drone_LED_off': {
+        if (line === 'drone.drone_LED_off()') return { type: 'led_off', params: {} };
+        return null;
+      }
+      case 'drone_buzzer': {
+        if ((m = line.match(/^drone\.drone_buzzer\(([^,]+)\s*,\s*(\d+)\)/))) {
+          return { type: 'buzzer', params: { note: m[1], dur: int(m[2], 500) } };
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  }
   return null;
 }

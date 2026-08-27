@@ -26,6 +26,7 @@ export class ObstacleManager {
     this.collisionEnabled = true;
     this.boundary = { minX: -4, maxX: 4, minZ: -4, maxZ: 4, maxY: 4 };
     this.rejectedCount = 0;
+    this._sharedResources = {};
     this.loadBaseObstacles();
   }
 
@@ -75,47 +76,50 @@ export class ObstacleManager {
     }
     this.obstacles = [];
     this.obstacleMeshes = {};
+    for (const type of Object.keys(this._sharedResources)) {
+      const shared = this._sharedResources[type];
+      shared.geometry.dispose();
+      shared.material.dispose();
+    }
+    this._sharedResources = {};
+  }
+
+  _addShared(type) {
+    if (this._sharedResources[type]) return this._sharedResources[type];
+
+    const typeDef = OBSTACLE_TYPES[type];
+    if (!typeDef) return null;
+
+    let geometry;
+    switch (type) {
+      case 'wall':
+      case 'tower':
+        geometry = new THREE.BoxGeometry(typeDef.width, typeDef.height, typeDef.depth);
+        break;
+      case 'hoop':
+        geometry = new THREE.TorusGeometry(typeDef.outerRadius, typeDef.innerRadius, 8, 24);
+        break;
+      case 'cone':
+        geometry = new THREE.ConeGeometry(typeDef.radius, typeDef.height, 32);
+        break;
+      default:
+        return null;
+    }
+
+    const material = new THREE.MeshStandardMaterial({ color: typeDef.color });
+    this._sharedResources[type] = { geometry, material };
+    return this._sharedResources[type];
   }
 
   _createMesh(obstacle) {
-    const typeDef = OBSTACLE_TYPES[obstacle.type];
-    if (!typeDef) return;
+    const shared = this._addShared(obstacle.type);
+    if (!shared) return;
 
-    let geometry, material, mesh;
-
-    switch (obstacle.type) {
-      case 'wall':
-        geometry = new THREE.BoxGeometry(typeDef.width, typeDef.height, typeDef.depth);
-        material = new THREE.MeshStandardMaterial({ color: typeDef.color });
-        mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        break;
-
-      case 'tower':
-        geometry = new THREE.BoxGeometry(typeDef.width, typeDef.height, typeDef.depth);
-        material = new THREE.MeshStandardMaterial({ color: typeDef.color });
-        mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        break;
-
-      case 'hoop':
-        const torusGeometry = new THREE.TorusGeometry(typeDef.outerRadius, typeDef.innerRadius, 16, 48);
-        material = new THREE.MeshStandardMaterial({ color: typeDef.color });
-        mesh = new THREE.Mesh(torusGeometry, material);
-        mesh.castShadow = true;
-        break;
-
-      case 'cone':
-        geometry = new THREE.ConeGeometry(typeDef.radius, typeDef.height, 32);
-        material = new THREE.MeshStandardMaterial({ color: typeDef.color });
-        mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        break;
-
-      default:
-        return;
+    const mesh = new THREE.Mesh(shared.geometry, shared.material);
+    const perfMode = document.documentElement.classList.contains('perf-mode');
+    mesh.castShadow = !perfMode;
+    if (obstacle.type === 'wall' || obstacle.type === 'tower') {
+      mesh.receiveShadow = true;
     }
 
     mesh.position.copy(obstacle.position);
@@ -130,6 +134,7 @@ export class ObstacleManager {
 
     this.scene.add(mesh);
     this.obstacleMeshes[obstacle.id] = mesh;
+    obstacle._worldBox = new THREE.Box3().setFromObject(mesh);
     return mesh;
   }
 
@@ -152,42 +157,41 @@ export class ObstacleManager {
       mesh.position.copy(obstacle.position);
       mesh.rotation.copy(obstacle.rotation);
       mesh.scale.copy(obstacle.scale);
+      obstacle._worldBox = new THREE.Box3().setFromObject(mesh);
     }
 
     return true;
   }
 
   getObstacles() {
-    return this.obstacles.map(obs => ({
-      ...obs,
-      position: [obs.position.x, obs.position.y, obs.position.z],
-      rotation: [obs.rotation.x, obs.rotation.y, obs.rotation.z],
-      scale: [obs.scale.x, obs.scale.y, obs.scale.z]
-    }));
+    return this.obstacles.map(obs => {
+      const { _worldBox, ...rest } = obs;
+      return {
+        ...rest,
+        position: [obs.position.x, obs.position.y, obs.position.z],
+        rotation: [obs.rotation.x, obs.rotation.y, obs.rotation.z],
+        scale: [obs.scale.x, obs.scale.y, obs.scale.z]
+      };
+    });
   }
 
   checkCollision(position, droneSize = 0.1) {
     if (!this.collisionEnabled) return null;
 
-    const droneBox = new THREE.Box3(
-      new THREE.Vector3(-droneSize/2, -droneSize/2, -droneSize/2),
-      new THREE.Vector3(droneSize/2, droneSize/2, droneSize/2)
-    );
-    droneBox.translate(position);
+    const half = droneSize / 2;
 
     for (const obstacle of this.obstacles) {
-      const mesh = this.obstacleMeshes[obstacle.id];
-      if (!mesh || !mesh.geometry) continue;
+      const box = obstacle._worldBox;
+      if (!box) continue;
+      if (position.x + half < box.min.x || position.x - half > box.max.x) continue;
+      if (position.y + half < box.min.y || position.y - half > box.max.y) continue;
+      if (position.z + half < box.min.z || position.z - half > box.max.z) continue;
 
-      const obsBox = new THREE.Box3().setFromObject(mesh);
-      
-      if (droneBox.intersectsBox(obsBox)) {
-        return {
-          obstacle: obstacle,
-          distance: position.distanceTo(obstacle.position),
-          normal: position.clone().sub(obstacle.position).normalize()
-        };
-      }
+      return {
+        obstacle: obstacle,
+        distance: position.distanceTo(obstacle.position),
+        normal: position.clone().sub(obstacle.position).normalize()
+      };
     }
 
     return null;

@@ -1,3 +1,19 @@
+const moveDist = { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 };
+const moveSpeed = { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 };
+const moveCode = (method) => (p) => {
+  const speed = Math.round((p.speed / 100) * 2 * 100) / 100;
+  const speedStr = Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
+  return `drone.${method}(${p.dist}, speed=${speedStr})`;
+};
+const moveDef = (method, label) => ({ label, params: [moveDist, moveSpeed], code: moveCode(method) });
+
+const shapeSpeed = (d) => ({ key: 'speed', label: 'Speed %', type: 'number', default: d, min: 10, max: 100 });
+const shapeSecs = (d, min) => ({ key: 'secs', label: 'Secs', type: 'number', default: d, min, max: 10 });
+const shapeDir = { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' };
+const dirVal = (p) => (p.dir === 'clockwise' ? 1 : -1);
+const shapeCode = (method, secs) => (p) => `drone.${method}(speed=${p.speed}${secs ? `, seconds=${secs === true ? p.secs : secs}` : ''}, direction=${dirVal(p)})`;
+const shapeDef = (method, label, params, secs) => ({ label, params, code: shapeCode(method, secs) });
+
 export const COMMAND_DEFS = {
   takeoff:        { label: 'Takeoff',        params: [],                                     code: 'drone.takeoff()' },
   land:           { label: 'Land',            params: [],                                     code: 'drone.land()' },
@@ -10,38 +26,10 @@ export const COMMAND_DEFS = {
     { key: 'power', label: 'Power %', type: 'number', default: 50, min: 0, max: 100 },
     { key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 }
   ], code: (p) => `drone.go("${p.dir}", ${p.power}, ${p.dur})` },
-  move_forward:   { label: 'Forward',        params: [
-    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => {
-    const speed = Math.round((p.speed / 100) * 2 * 100) / 100;
-    const speedStr = Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
-    return `drone.move_forward(${p.dist}, speed=${speedStr})`;
-  } },
-  move_backward:  { label: 'Back',            params: [
-    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => {
-    const speed = Math.round((p.speed / 100) * 2 * 100) / 100;
-    const speedStr = Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
-    return `drone.move_backward(${p.dist}, speed=${speedStr})`;
-  } },
-  move_left:      { label: 'Left',            params: [
-    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => {
-    const speed = Math.round((p.speed / 100) * 2 * 100) / 100;
-    const speedStr = Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
-    return `drone.move_left(${p.dist}, speed=${speedStr})`;
-  } },
-  move_right:     { label: 'Right',           params: [
-    { key: 'dist', label: 'cm', type: 'number', default: 50, min: 10, max: 300 },
-    { key: 'speed', label: 'Speed', type: 'number', default: 50, min: 0, max: 100 }
-  ], code: (p) => {
-    const speed = Math.round((p.speed / 100) * 2 * 100) / 100;
-    const speedStr = Number.isInteger(speed) ? speed.toFixed(1) : String(speed);
-    return `drone.move_right(${p.dist}, speed=${speedStr})`;
-  } },
+  move_forward:   moveDef('move_forward', 'Forward'),
+  move_backward:  moveDef('move_backward', 'Back'),
+  move_left:      moveDef('move_left', 'Left'),
+  move_right:     moveDef('move_right', 'Right'),
   turn_left:      { label: 'Turn Left',       params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_left(${p.deg})` },
   turn_right:     { label: 'Turn Right',      params: [{ key: 'deg', label: 'Deg', type: 'number', default: 90, min: 1, max: 360 }], code: (p) => `drone.turn_right(${p.deg})` },
   turn_degree:    { label: 'Turn',            params: [
@@ -49,39 +37,13 @@ export const COMMAND_DEFS = {
     { key: 'timeout', label: 'Timeout', type: 'number', default: 3, min: 0.1, max: 30 },
     { key: 'p_value', label: 'P Value', type: 'number', default: 10, min: 0, max: 100 }
   ], code: (p) => `drone.turn_degree(${p.deg}, timeout=${p.timeout}, p_value=${p.p_value})` },
-  circle:         { label: 'Circle',          params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 75, min: 10, max: 100 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.circle(speed=${p.speed}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
-  circle_turn:    { label: 'Circle Turn',     params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 75, min: 10, max: 100 },
-    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 1, max: 10 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.circle_turn(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
-  square:         { label: 'Square',          params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
-    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.square(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
-  square_turn:    { label: 'Square Turn',     params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
-    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.square(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
-  triangle:       { label: 'Triangle',        params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
-    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.triangle(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
-  triangle_turn:  { label: 'Triangle Turn',   params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 60, min: 10, max: 100 },
-    { key: 'secs', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.triangle_turn(speed=${p.speed}, seconds=${p.secs}, direction=${p.dir === 'clockwise' ? 1 : -1})` },
-  spiral:         { label: 'Spiral',          params: [
-    { key: 'speed', label: 'Speed %', type: 'number', default: 50, min: 10, max: 100 },
-    { key: 'dir', label: 'Direction', type: 'select', options: ['clockwise', 'counter-clockwise'], default: 'clockwise' }
-  ], code: (p) => `drone.spiral(speed=${p.speed}, seconds=3, direction=${p.dir === 'clockwise' ? 1 : -1})` },
+  circle:         shapeDef('circle', 'Circle', [shapeSpeed(75), shapeDir], false),
+  circle_turn:    shapeDef('circle_turn', 'Circle Turn', [shapeSpeed(75), shapeSecs(1, 1), shapeDir], true),
+  square:         shapeDef('square', 'Square', [shapeSpeed(60), shapeSecs(1, 0.1), shapeDir], true),
+  square_turn:    shapeDef('square', 'Square Turn', [shapeSpeed(60), shapeSecs(1, 0.1), shapeDir], true),
+  triangle:       shapeDef('triangle', 'Triangle', [shapeSpeed(60), shapeSecs(1, 0.1), shapeDir], true),
+  triangle_turn:  shapeDef('triangle_turn', 'Triangle Turn', [shapeSpeed(60), shapeSecs(1, 0.1), shapeDir], true),
+  spiral:         shapeDef('spiral', 'Spiral', [shapeSpeed(50), shapeDir], 3),
   sway:            { label: 'Sway',             params: [
     { key: 'speed', label: 'Speed %', type: 'number', default: 50, min: 10, max: 100 },
     { key: 'secs', label: 'Secs', type: 'number', default: 2, min: 1, max: 10 },
@@ -138,6 +100,7 @@ export const COMMAND_DEFS = {
     }
     return `drone.drone_buzzer("${notes[nearest]}", ${p.dur})`;
   } },
+  time_sleep:     { label: 'Sleep',           params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10 }], code: (p) => `time.sleep(${p.dur})` },
   drone_sleep:    { label: 'Sleep',           params: [{ key: 'dur', label: 'Secs', type: 'number', default: 1, min: 0.1, max: 10, step: 0.1 }], code: (p) => `time.sleep(${p.dur})` },
 
   var_declare:    { label: 'Var',             params: [

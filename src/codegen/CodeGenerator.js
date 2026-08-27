@@ -1,4 +1,4 @@
-import { getCommandCode, COMMAND_DEFS } from '../commands/Commands.js';
+import { getCommandCode } from '../commands/Commands.js';
 
 export function generateDroneScript(commands) {
   const lines = [
@@ -68,52 +68,50 @@ export function generateSwarmScript(drones) {
   return lines.join('\n');
 }
 
+function emitBlockStructure(cmd, lines, indent, sub, bodyFn) {
+  const pad = '    '.repeat(indent);
+  const p = cmd.params || {};
+  switch (cmd.type) {
+    case 'if_block':
+      lines.push(`${pad}if ${sub(p.condition)}:`);
+      break;
+    case 'elif_block':
+      lines.push(`${pad}elif ${sub(p.condition)}:`);
+      break;
+    case 'else_block':
+      lines.push(`${pad}else:`);
+      break;
+    case 'while_block':
+      lines.push(`${pad}while ${sub(p.condition)}:`);
+      break;
+    case 'for_block':
+      lines.push(`${pad}for ${sub(p.var) ?? 'i'} in range(${p.start ?? 0}, ${p.end_val ?? 5}, ${p.step ?? 1}):`);
+      break;
+    case 'func_def':
+      lines.push(`${pad}def ${sub(p.name)}():`);
+      break;
+    default:
+      return false;
+  }
+  if (cmd.children && cmd.children.length > 0) bodyFn(cmd.children, lines, indent + 1);
+  else lines.push(`${pad}    pass`);
+  return true;
+}
+
 function generateBlockCode(commands, lines, indent, droneVar = 'drone') {
   const pad = '    '.repeat(indent);
+  const sub = droneVar !== 'drone' ? (s) => (s ?? '').replace(/drone\./g, droneVar + '.') : (s) => s;
   for (const cmd of commands) {
-    const def = COMMAND_DEFS[cmd.type];
-    const p = cmd.params || {};
-
+    if (emitBlockStructure(cmd, lines, indent, sub, (children, l, ind) => generateBlockCode(children, l, ind, droneVar))) {
+      continue;
+    }
     switch (cmd.type) {
-      case 'if_block':
-        lines.push(`${pad}if ${p.condition}:`);
-        if (cmd.children && cmd.children.length > 0) generateBlockCode(cmd.children, lines, indent + 1, droneVar);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'elif_block':
-        lines.push(`${pad}elif ${p.condition}:`);
-        if (cmd.children && cmd.children.length > 0) generateBlockCode(cmd.children, lines, indent + 1, droneVar);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'else_block':
-        lines.push(`${pad}else:`);
-        if (cmd.children && cmd.children.length > 0) generateBlockCode(cmd.children, lines, indent + 1, droneVar);
-        else lines.push(`${pad}    pass`);
-        break;
       case 'end_block':
-        break;
-      case 'while_block':
-        lines.push(`${pad}while ${p.condition}:`);
-        if (cmd.children && cmd.children.length > 0) generateBlockCode(cmd.children, lines, indent + 1, droneVar);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'for_block':
-        lines.push(`${pad}for ${p.var || 'i'} in range(${p.start || 0}, ${p.end_val || 5}, ${p.step || 1}):`);
-        if (cmd.children && cmd.children.length > 0) generateBlockCode(cmd.children, lines, indent + 1, droneVar);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'func_def':
-        lines.push(`${pad}def ${p.name}():`);
-        if (cmd.children && cmd.children.length > 0) generateBlockCode(cmd.children, lines, indent + 1, droneVar);
-        else lines.push(`${pad}    pass`);
         break;
       default: {
         let code = getCommandCode(cmd);
         if (code !== undefined && code !== '') {
-          if (droneVar !== 'drone') {
-            code = code.replace(/drone\./g, droneVar + '.');
-          }
-          lines.push(`${pad}${code}`);
+          lines.push(`${pad}${sub(code)}`);
         }
         break;
       }
@@ -196,6 +194,9 @@ function generateSimBlock(commands, lines, indent) {
   const pad = '    '.repeat(indent);
   for (const cmd of commands) {
     const p = cmd.params || {};
+    if (emitBlockStructure(cmd, lines, indent, (s) => s, (children, l, ind) => generateSimBlock(children, l, ind))) {
+      continue;
+    }
 
     switch (cmd.type) {
       case 'takeoff':
@@ -263,8 +264,8 @@ function generateSimBlock(commands, lines, indent) {
       }
       case 'go': {
         const dir = p.dir || 'forward';
-        const power = p.power || 50;
-        const dur = p.dur || 1;
+        const power = p.power ?? 50;
+        const dur = p.dur ?? 1;
         lines.push(`${pad}# Go ${dir} power=${power} dur=${dur}s`);
         lines.push(`${pad}speed = (${power} / 100.0) * DEFAULT_SPEED * 2`);
         lines.push(`${pad}steps = max(int(${dur} / DT), 5)`);
@@ -285,8 +286,8 @@ function generateSimBlock(commands, lines, indent) {
        case 'move_forward':
        case 'move_backward': {
          const sign = cmd.type === 'move_forward' ? '' : '-';
-         const dist = p.dist || 50;
-         const speed = p.speed || 50;
+         const dist = p.dist ?? 50;
+         const speed = p.speed ?? 50;
          lines.push(`${pad}# ${cmd.type === 'move_forward' ? 'Forward' : 'Backward'} ${dist}cm speed=${speed}`);
          lines.push(`${pad}dist_m = ${dist} / 100.0`);
          lines.push(`${pad}rad = math.radians(heading)`);
@@ -303,8 +304,8 @@ function generateSimBlock(commands, lines, indent) {
        case 'move_left':
        case 'move_right': {
          const sign = cmd.type === 'move_left' ? '-' : '+';
-         const dist = p.dist || 50;
-         const speed = p.speed || 50;
+         const dist = p.dist ?? 50;
+         const speed = p.speed ?? 50;
          lines.push(`${pad}# ${cmd.type === 'move_left' ? 'Left' : 'Right'} ${dist}cm speed=${speed}`);
          lines.push(`${pad}dist_m = ${dist} / 100.0`);
          lines.push(`${pad}rad = math.radians(heading)`);
@@ -331,15 +332,15 @@ function generateSimBlock(commands, lines, indent) {
        case 'turn_left':
        case 'turn_right': {
          const sign = cmd.type === 'turn_left' ? '+' : '-';
-         const deg = p.deg || 90;
+         const deg = p.deg ?? 90;
          lines.push(`${pad}# Turn ${cmd.type === 'turn_left' ? 'Left' : 'Right'} ${deg}deg`);
          lines.push(`${pad}heading ${sign}= ${deg}`);
          lines.push(`${pad}positions.append((x, y, z))`);
          break;
        }
        case 'turn_degree': {
-         const deg = p.deg || 90;
-         const timeout = p.timeout || 3;
+         const deg = p.deg ?? 90;
+         const timeout = p.timeout ?? 3;
          lines.push(`${pad}# Turn ${deg}deg timeout=${timeout}`);
          lines.push(`${pad}heading += ${deg}`);
          lines.push(`${pad}positions.append((x, y, z))`);
@@ -347,7 +348,7 @@ function generateSimBlock(commands, lines, indent) {
        }
        case 'circle':
        case 'circle_turn': {
-         const speed = p.speed || 75;
+         const speed = p.speed ?? 75;
          const direction = p.dir === 'counter-clockwise' ? -1 : 1;
          lines.push(`${pad}# Circle speed=${speed} direction=${direction}`);
          lines.push(`${pad}for i in range(60):`);
@@ -363,8 +364,8 @@ function generateSimBlock(commands, lines, indent) {
        case 'square_turn':
        case 'triangle':
        case 'triangle_turn': {
-         const speed = p.speed || 60;
-         const secs = p.secs || 1;
+         const speed = p.speed ?? 60;
+         const secs = p.secs ?? 1;
          const direction = p.dir === 'counter-clockwise' ? -1 : 1;
          const isTriangle = cmd.type.includes('triangle');
          const numSides = isTriangle ? 3 : 4;
@@ -383,7 +384,7 @@ function generateSimBlock(commands, lines, indent) {
          break;
        }
        case 'spiral': {
-         const speed = p.speed || 50;
+         const speed = p.speed ?? 50;
          const direction = p.dir === 'counter-clockwise' ? -1 : 1;
          lines.push(`${pad}# Spiral speed=${speed} direction=${direction}`);
          lines.push(`${pad}for i in range(120):`);
@@ -401,7 +402,7 @@ function generateSimBlock(commands, lines, indent) {
          break;
        }
        case 'sway': {
-         const speed = p.speed || 50;
+         const speed = p.speed ?? 50;
          const dir = p.dir || 'forward-back';
          lines.push(`${pad}# Sway speed=${speed} dir=${dir}`);
          lines.push(`${pad}for i in range(40):`);
@@ -412,8 +413,8 @@ function generateSimBlock(commands, lines, indent) {
        }
        case 'keep_distance':
        case 'avoid_wall': {
-         const dist = p.dist || 50;
-         const speed = p.speed || 50;
+         const dist = p.dist ?? 50;
+         const speed = p.speed ?? 50;
          lines.push(`${pad}# ${cmd.type === 'keep_distance' ? 'Keep Distance' : 'Avoid Wall'} ${dist}cm speed=${speed}`);
          lines.push(`${pad}rad = math.radians(heading)`);
          lines.push(`${pad}dist_m = ${dist} / 100.0`);
@@ -442,32 +443,7 @@ function generateSimBlock(commands, lines, indent) {
       case 'set_var': lines.push(`${pad}${p.name} ${p.op} ${p.value}`); break;
       case 'print_var': lines.push(`${pad}print(${p.value})`); break;
 
-      case 'if_block':
-        lines.push(`${pad}if ${p.condition}:`);
-        if (cmd.children && cmd.children.length > 0) generateSimBlock(cmd.children, lines, indent + 1);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'elif_block':
-        lines.push(`${pad}elif ${p.condition}:`);
-        if (cmd.children && cmd.children.length > 0) generateSimBlock(cmd.children, lines, indent + 1);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'else_block':
-        lines.push(`${pad}else:`);
-        if (cmd.children && cmd.children.length > 0) generateSimBlock(cmd.children, lines, indent + 1);
-        else lines.push(`${pad}    pass`);
-        break;
       case 'end_block': break;
-      case 'while_block':
-        lines.push(`${pad}while ${p.condition}:`);
-        if (cmd.children && cmd.children.length > 0) generateSimBlock(cmd.children, lines, indent + 1);
-        else lines.push(`${pad}    pass`);
-        break;
-      case 'for_block':
-        lines.push(`${pad}for ${p.var || 'i'} in range(${p.start || 0}, ${p.end_val || 5}, ${p.step || 1}):`);
-        if (cmd.children && cmd.children.length > 0) generateSimBlock(cmd.children, lines, indent + 1);
-        else lines.push(`${pad}    pass`);
-        break;
       case 'break_cmd': lines.push(`${pad}break`); break;
 
        case 'get_battery': lines.push(`${pad}${p.var} = 80`); break;
@@ -478,13 +454,7 @@ function generateSimBlock(commands, lines, indent) {
        case 'get_back_color': lines.push(`${pad}${p.var} = "blue"`); break;
         case 'get_temperature': lines.push(`${pad}${p.var} = 22.0`); break;
         case 'get_distance': lines.push(`${pad}${p.var} = 100`); break;
-        case 'detect_wall': lines.push(`${pad}${p.var} = 0`); break;
 
-      case 'func_def':
-        lines.push(`${pad}def ${p.name}():`);
-        if (cmd.children && cmd.children.length > 0) generateSimBlock(cmd.children, lines, indent + 1);
-        else lines.push(`${pad}    pass`);
-        break;
       case 'func_call': lines.push(`${pad}${p.name}()`); break;
       case 'return_val': lines.push(`${pad}return ${p.value}`); break;
 
