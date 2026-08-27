@@ -63,6 +63,8 @@ export class Scene3D {
     this.onLog = null;
     this.onCollision = null;
     this.onPlaybackEnd = null;
+    this.onProgress = null;
+    this._endFired = false;
     this.lastTelemetry = null;
     this.currentCommandIndex = -1;
     this.currentDroneId = null;
@@ -284,6 +286,7 @@ export class Scene3D {
         this.routeMap[state.id].push({ index, posIndex: state.positions.length });
       }
     });
+    this._endFired = false;
 
     for (const id of Object.keys(this.plannedPaths)) {
       this.scene.remove(this.plannedPaths[id]);
@@ -453,23 +456,32 @@ export class Scene3D {
       if (this.onLog) this.onLog('No commands to play', 'warn');
       return;
     }
-    this.isPlaying = true;
-    this.simTime = 0;
-    this._camOffset = null;
 
-    for (const id of Object.keys(this.droneTrails)) {
-      this.droneTrails[id].clear();
+    if (this._endFired || this.simTime <= 0) {
+      this.simTime = 0;
+      this._camOffset = null;
+      for (const id of Object.keys(this.droneTrails)) {
+        this.droneTrails[id].clear();
+      }
+      for (const id of Object.keys(this.droneMeshes)) {
+        setAllLeds(this.droneMeshes[id], 'off');
+        this.droneLeds[id] = 'off';
+      }
     }
-    for (const id of Object.keys(this.droneMeshes)) {
-      setAllLeds(this.droneMeshes[id], 'off');
-      this.droneLeds[id] = 'off';
-    }
+
+    this._endFired = false;
+    this.isPlaying = true;
+    this.needsRender = true;
 
     let totalFrames = 0;
     for (const id of Object.keys(this.swarmResults)) {
       totalFrames = Math.max(totalFrames, this.swarmResults[id].positions.length);
     }
     if (this.onLog) this.onLog(`Playing swarm: ${Object.keys(this.swarmResults).length} drones, ${totalFrames} frames`, 'success');
+  }
+
+  pause() {
+    this.isPlaying = false;
     this.needsRender = true;
   }
 
@@ -491,6 +503,30 @@ export class Scene3D {
 
   reset() { this.stop(); }
   setSpeed(s) { this.speed = s; }
+
+  setPlaybackFraction(f) {
+    if (!this.swarmResults || Object.keys(this.swarmResults).length === 0) return;
+
+    let maxDuration = 0;
+    for (const result of Object.values(this.swarmResults)) {
+      maxDuration = Math.max(maxDuration, result.totalDuration);
+    }
+    if (maxDuration <= 0) maxDuration = 1;
+
+    const t = Math.min(1, Math.max(0, f));
+    this.isPlaying = false;
+    this.simTime = t * maxDuration;
+    this._applyFrame(t);
+
+    if (t >= 1 && !this._endFired) {
+      this._endFired = true;
+      const r = Object.values(this.swarmResults)[0];
+      if (this.onPlaybackEnd && r && r.positions.length > 0) this.onPlaybackEnd(r.positions[r.positions.length - 1].z);
+    }
+
+    if (this.onProgress) this.onProgress(t);
+    this.needsRender = true;
+  }
 
   getObstacles() {
     return this.obstacleManager.getObstacles();
@@ -630,6 +666,89 @@ export class Scene3D {
     };
   }
 
+  _applyFrame(t) {
+    let firstMesh = null;
+    let firstPos = null;
+    let firstA = null;
+    let firstB = null;
+    let firstFrac = 0;
+
+    for (const [id, result] of Object.entries(this.swarmResults)) {
+      const mesh = this.droneMeshes[id];
+      if (!mesh || result.positions.length === 0) continue;
+
+      const positions = result.positions;
+      const rawIdx = t * (positions.length - 1);
+      const idx = Math.min(Math.floor(rawIdx), positions.length - 2);
+      const frac = rawIdx - idx;
+      const a = positions[idx];
+      const b = positions[Math.min(idx + 1, positions.length - 1)];
+      const p = {
+        x: a.x + (b.x - a.x) * frac,
+        y: a.y + (b.y - a.y) * frac,
+        z: a.z + (b.z - a.z) * frac,
+        heading: a.heading + ((b.heading || 0) - (a.heading || 0)) * frac,
+        pitch: a.pitch + ((b.pitch || 0) - (a.pitch || 0)) * frac,
+        roll: a.roll + ((b.roll || 0) - (a.roll || 0)) * frac,
+        led: frac < 0.5 ? a.led : b.led
+      };
+
+      mesh.position.set(p.x, p.z, p.y);
+
+      const yaw = -(p.heading || 0) * Math.PI / 180 - Math.PI / 2;
+      const pitch = -(p.pitch || 0) * Math.PI / 180;
+      const roll = -(p.roll || 0) * Math.PI / 180;
+
+      mesh.rotation.order = 'YXZ';
+      mesh.rotation.set(pitch, yaw, roll);
+
+      const propellers = mesh.userData.propellers;
+      for (let pi = 0; pi < propellers.length; pi++) {
+        propellers[pi].rotation.y += 50 * 0.033;
+      }
+
+      if (p.led !== undefined && p.led !== this.droneLeds[id]) {
+        this.droneLeds[id] = p.led;
+        setAllLeds(mesh, p.led);
+      }
+
+      this._scratchVec.set(p.x, p.z, p.y);
+      if (this.droneTrails[id]) {
+        this.droneTrails[id].addPoint(this._scratchVec);
+      }
+
+      if (this.onCollision) {
+        const collision = this.checkCollision(this._scratchVec, 0.1);
+        if (collision) {
+          this.onCollision(collision, id);
+        }
+      }
+
+      if (!firstMesh) { firstMesh = mesh; firstPos = p; firstA = a; firstB = b; firstFrac = frac; }
+    }
+
+    if (this.cameraMode === 1) {
+      this.controls.target.set(0, 0.15, 0);
+    } else if (this.cameraMode === 2 && firstMesh) {
+      const dronePos = firstMesh.position;
+      if (!this._camOffset) {
+        this._camOffset = new THREE.Vector3().copy(this.camera.position).sub(dronePos);
+      }
+      this.camera.position.copy(dronePos).add(this._camOffset);
+      this.controls.target.copy(dronePos);
+    }
+
+    if (this.onPositionUpdate && firstPos) {
+      this.onPositionUpdate(firstPos.x, firstPos.y, firstPos.z, firstPos.heading);
+    }
+
+    if (firstPos) {
+      const telemetry = this._buildTelemetry(firstA, firstB, firstFrac, firstPos);
+      this.lastTelemetry = telemetry;
+      if (this.onTelemetry) this.onTelemetry(telemetry);
+    }
+  }
+
   _animLoop() {
     requestAnimationFrame(() => this._animLoop());
 
@@ -650,95 +769,17 @@ export class Scene3D {
       if (maxDuration <= 0) maxDuration = 1;
       const t = Math.min(this.simTime / maxDuration, 1);
 
-      let firstMesh = null;
-      let firstPos = null;
-      let firstA = null;
-      let firstB = null;
-      let firstFrac = 0;
+      this._applyFrame(t);
 
-      for (const [id, result] of Object.entries(this.swarmResults)) {
-        const mesh = this.droneMeshes[id];
-        if (!mesh || result.positions.length === 0) continue;
+      if (t >= 1 && !this._endFired) {
+        this._endFired = true;
+        this.isPlaying = false;
+        this.needsRender = true;
+        const r = Object.values(this.swarmResults)[0];
+        if (this.onPlaybackEnd && r && r.positions.length > 0) this.onPlaybackEnd(r.positions[r.positions.length - 1].z);
+      }
 
-        const positions = result.positions;
-        const rawIdx = t * (positions.length - 1);
-        const idx = Math.min(Math.floor(rawIdx), positions.length - 2);
-        const frac = rawIdx - idx;
-        const a = positions[idx];
-        const b = positions[Math.min(idx + 1, positions.length - 1)];
-        const p = {
-          x: a.x + (b.x - a.x) * frac,
-          y: a.y + (b.y - a.y) * frac,
-          z: a.z + (b.z - a.z) * frac,
-          heading: a.heading + ((b.heading || 0) - (a.heading || 0)) * frac,
-          pitch: a.pitch + ((b.pitch || 0) - (a.pitch || 0)) * frac,
-          roll: a.roll + ((b.roll || 0) - (a.roll || 0)) * frac,
-          led: frac < 0.5 ? a.led : b.led
-        };
-
-        mesh.position.set(p.x, p.z, p.y);
-
-        const yaw = -(p.heading || 0) * Math.PI / 180 - Math.PI / 2;
-        const pitch = -(p.pitch || 0) * Math.PI / 180;
-        const roll = -(p.roll || 0) * Math.PI / 180;
-
-        mesh.rotation.order = 'YXZ';
-        mesh.rotation.set(pitch, yaw, roll);
-
-        const propellers = mesh.userData.propellers;
-        for (let pi = 0; pi < propellers.length; pi++) {
-          propellers[pi].rotation.y += 50 * 0.033;
-        }
-
-        if (p.led !== undefined && p.led !== this.droneLeds[id]) {
-          this.droneLeds[id] = p.led;
-          setAllLeds(mesh, p.led);
-        }
-
-         this._scratchVec.set(p.x, p.z, p.y);
-         if (this.droneTrails[id]) {
-           this.droneTrails[id].addPoint(this._scratchVec);
-         }
-
-         if (this.onCollision) {
-           const collision = this.checkCollision(this._scratchVec, 0.1);
-           if (collision) {
-             this.onCollision(collision, id);
-           }
-         }
-
-         if (!firstMesh) { firstMesh = mesh; firstPos = p; firstA = a; firstB = b; firstFrac = frac; }
-       }
-
-       if (this.cameraMode === 1) {
-         this.controls.target.set(0, 0.15, 0);
-       } else if (this.cameraMode === 2 && firstMesh) {
-         const dronePos = firstMesh.position;
-         if (!this._camOffset) {
-           this._camOffset = new THREE.Vector3().copy(this.camera.position).sub(dronePos);
-         }
-         this.camera.position.copy(dronePos).add(this._camOffset);
-         this.controls.target.copy(dronePos);
-       }
-
-       if (this.onPositionUpdate && firstPos) {
-         this.onPositionUpdate(firstPos.x, firstPos.y, firstPos.z, firstPos.heading);
-       }
-
-       if (firstPos) {
-         const telemetry = this._buildTelemetry(firstA, firstB, firstFrac, firstPos);
-         this.lastTelemetry = telemetry;
-         if (this.onTelemetry) this.onTelemetry(telemetry);
-       }
-
-       if (t >= 1 && this.isPlaying) {
-         this.isPlaying = false;
-         this.needsRender = true;
-         const primaryResult = Object.values(this.swarmResults)[0];
-         if (this.onPlaybackEnd && primaryResult && primaryResult.positions.length > 0) {
-           this.onPlaybackEnd(primaryResult.positions[primaryResult.positions.length - 1].z);
-         }
-       }
+      if (this.onProgress) this.onProgress(t);
     }
 
     this.renderer.render(this.scene, this.camera);

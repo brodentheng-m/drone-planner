@@ -625,6 +625,16 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
 }
 
+#playback-scrub {
+  width: 140px;
+  margin: 0 2px;
+  accent-color: var(--accent);
+}
+#playback-scrub:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 #speed-label {
   font-size: 11px; color: var(--text-dim); min-width: 36px;
   font-family: 'Fira Code', monospace; font-weight: 500;

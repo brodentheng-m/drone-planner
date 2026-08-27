@@ -39,6 +39,7 @@ const statusHdg = document.getElementById('status-hdg');
 const statusDot = document.getElementById('status-dot');
 const statusText = document.getElementById('status-text');
 const consoleOutput = document.getElementById('console-output');
+const scrubSlider = document.getElementById('playback-scrub');
 
 const CMD_CATEGORIES = {
   takeoff: 'cat-flight', land: 'cat-flight', hover: 'cat-flight', flip: 'cat-flight',
@@ -93,6 +94,10 @@ async function init() {
   const canvas = document.getElementById('scene-canvas');
   const { Scene3D } = await import('./scene/Scene3D.js');
   scene3d = new Scene3D(canvas);
+  scene3d.onProgress = (t) => {
+    scrubSlider.value = String(Math.round(t * 1000));
+  };
+  scrubSlider.disabled = false;
   scene3d.onPositionUpdate = (x, y, z, heading) => {
     readoutPos.textContent = `X: ${x.toFixed(2)} Y: ${y.toFixed(2)} Z: ${z.toFixed(2)}`;
     readoutHeading.textContent = `HDG: ${Math.round(heading)}\u00B0`;
@@ -706,6 +711,7 @@ function bindPlayback() {
     log(`Play - ${plan.drones.length} drone(s), ${total} commands`);
     scene3d.setSwarm(plan.drones);
     scene3d.play();
+    scrubSlider.value = '0';
     isFlying = true;
     hasCollision = false;
     telemetryHead = 0;
@@ -715,15 +721,16 @@ function bindPlayback() {
   });
 
   document.getElementById('btn-stop').addEventListener('click', () => {
-    scene3d.stop();
+    scene3d.pause();
     isFlying = false;
     stopHighlightTimer();
     updateFlightStatus();
-    log('Playback stopped', 'warn');
+    log('Playback paused', 'warn');
   });
 
   document.getElementById('btn-reset').addEventListener('click', () => {
     scene3d.reset();
+    scrubSlider.value = '0';
     isFlying = false;
     hasCollision = false;
     stopHighlightTimer();
@@ -736,6 +743,19 @@ function bindPlayback() {
     const s = parseFloat(e.target.value);
     scene3d.setSpeed(s);
     document.getElementById('speed-label').textContent = s.toFixed(1) + 'x';
+  });
+
+  scrubSlider.addEventListener('input', () => {
+    if (isFlying) {
+      isFlying = false;
+      stopHighlightTimer();
+      updateFlightStatus();
+    }
+    scene3d.setPlaybackFraction(parseFloat(scrubSlider.value) / 1000);
+  });
+
+  scrubSlider.addEventListener('change', () => {
+    scene3d.setPlaybackFraction(parseFloat(scrubSlider.value) / 1000);
   });
 }
 
@@ -1054,6 +1074,7 @@ function refresh() {
   renderObstacleList();
   updateCodePreview();
   document.getElementById('plan-name').textContent = plan.name || 'Untitled Flight Plan';
+  scrubSlider.value = '0';
 
   scene3d.setSwarm(plan.drones);
   scene3d.setActiveDroneId(plan.activeDroneId);
